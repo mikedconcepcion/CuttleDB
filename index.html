@@ -126,10 +126,10 @@
     --code-bg:    #f6f7f9;
     --accent:     #2563eb;       /* primary cue: blue */
     --accent-bg:  #eff5ff;
-    --success:    #047857;       /* secondary cue: green (wins, ok) */
-    --success-bg: #ecfdf5;
-    --warn:       #b45309;       /* tertiary cue: amber (caveats, costs) */
-    --warn-bg:    #fffbeb;
+    --success:    #059669;       /* secondary cue: green (wins, ok) */
+    --success-bg: #d1fae5;
+    --warn:       #d97706;       /* tertiary cue: amber (caveats, costs) */
+    --warn-bg:    #fef3c7;
     --max:        44em;
   }
 
@@ -327,20 +327,23 @@
   /* Section number prefix (organization cue) */
   h2 .num {
     display: inline-block;
-    color: var(--text-mute);
+    color: var(--accent);
+    background: var(--accent-bg);
+    padding: 0.12em 0.5em;
+    border-radius: 4px;
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 0.7em;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    margin-right: 0.7em;
+    font-size: 0.72em;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-right: 0.65em;
     vertical-align: 0.18em;
   }
 
   /* Note / callout boxes */
   .note, .note-warn, .note-ok {
-    border-left: 3px solid var(--accent);
+    border-left: 4px solid var(--accent);
     background: var(--accent-bg);
-    padding: 0.8rem 1.05rem;
+    padding: 0.85rem 1.1rem;
     border-radius: 0 6px 6px 0;
     margin: 1.1rem 0;
     font-size: 0.95rem;
@@ -361,9 +364,9 @@
   .note p:first-child, .note-warn p:first-child, .note-ok p:first-child { margin-top: 0; }
   .note p:last-child, .note-warn p:last-child, .note-ok p:last-child { margin-bottom: 0; }
 
-  /* Benchmark table colored cells */
-  td.win  { color: var(--success); font-weight: 600; }
-  td.loss { color: var(--warn); font-weight: 600; }
+  /* Benchmark table colored cells (background tint = visible at a glance) */
+  td.win  { background: var(--success-bg); color: var(--success); font-weight: 600; }
+  td.loss { background: var(--warn-bg);    color: var(--warn);    font-weight: 600; }
 
   /* Showcase numbered badges */
   .showcase-h {
@@ -392,15 +395,15 @@
   body::before {
     content: "";
     display: block;
-    height: 3px;
-    background: linear-gradient(90deg, var(--accent) 0%, var(--success) 60%, var(--warn) 100%);
+    height: 5px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--success) 55%, var(--warn) 100%);
     position: fixed;
     top: 0; left: 0; right: 0;
     z-index: 100;
   }
 
-  /* Definition list: thin left border for organization */
-  dl { padding-left: 0.9rem; border-left: 2px solid var(--line); }
+  /* Definition list: thin colored left border for organization */
+  dl { padding-left: 0.9rem; border-left: 2px solid var(--accent); }
 
   /* Responsive */
   @media (max-width: 540px) {
