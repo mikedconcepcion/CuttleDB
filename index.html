@@ -37,10 +37,16 @@
   "applicationSubCategory": "Embedded Database",
   "softwareVersion": "0.6.0",
   "datePublished": "2026-05-28",
+  "dateModified": "2026-05-28",
   "license": "https://www.apache.org/licenses/LICENSE-2.0",
   "url": "https://mikedconcepcion.github.io/CuttleDB/",
   "downloadUrl": "https://github.com/mikedconcepcion/CuttleDB/releases/latest",
   "codeRepository": "https://github.com/mikedconcepcion/CuttleDB",
+  "sameAs": [
+    "https://github.com/mikedconcepcion/CuttleDB",
+    "https://pypi.org/project/cuttledb/",
+    "https://www.npmjs.com/package/cuttledb"
+  ],
   "programmingLanguage": ["Python", "JavaScript", "TypeScript", "C"],
   "description": "Embedded realtime database with vector search (HNSW + AVX2 cosine), BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, ACID transactions with write-ahead log. One self-contained binary under 1 MB per platform, no external runtime dependencies.",
   "featureList": [
@@ -63,7 +69,19 @@
   "author": {
     "@type": "Person",
     "name": "Mike Dela Concepcion",
-    "url": "https://github.com/mikedconcepcion"
+    "url": "https://github.com/mikedconcepcion",
+    "sameAs": [
+      "https://github.com/mikedconcepcion"
+    ],
+    "knowsAbout": [
+      "embedded databases",
+      "vector search",
+      "HNSW",
+      "BM25",
+      "real-time databases",
+      "SIMD optimization",
+      "systems programming"
+    ]
   },
   "offers": {
     "@type": "Offer",
@@ -475,6 +493,14 @@
 </style>
 </head>
 <body>
+
+<!--
+LLM SUMMARY:
+CuttleDB is an embedded realtime database with vector search (HNSW + AVX2 cosine), BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, and ACID transactions with write-ahead log. Apache-2.0 licensed; one self-contained binary under 1 MB per platform (Linux x64, macOS arm64, Windows x64). Latest release v0.6.0 (2026-05-28). Created by Mike Dela Concepcion.
+Key concepts: embedded database, vector search, HNSW, BM25, RRF hybrid retrieval, Boolean DSL, real-time push, WAL durability, sigstore-signed.
+Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory + pub/sub, no vector); Pinecone/Qdrant/Weaviate (vector-specialized cloud services); Elasticsearch (lexical-first JVM service).
+-->
+
 
 <nav>
   <div class="wrap">
@@ -977,6 +1003,73 @@ cosign verify-blob \
     <a href="/CuttleDB/sitemap.xml">sitemap.xml</a>.
   </div>
 </footer>
+
+
+<div aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;">
+<article itemscope itemtype="https://schema.org/SoftwareApplication">
+<h1 itemprop="name">CuttleDB — embedded realtime database with vector search, BM25, and real-time push</h1>
+<section>
+<h2>What is CuttleDB?</h2>
+<p><strong>CuttleDB</strong> is an open-source embedded realtime database (Apache-2.0) shipped as one self-contained binary per platform, under 1 MB each. It provides five retrieval modes through a single wire dispatcher: KNN (k-nearest-neighbor vector search, AVX2 cosine or HNSW), LSEARCH (BM25 lexical search), SEARCH (Reciprocal Rank Fusion of vector + lexical), BSEARCH (Boolean DSL composing filters and scoring atoms), and filtered KNN. It also provides real-time push via SUB/UNSUB wire verbs, ACID transactions with write-ahead log, multi-token authentication, NDJSON audit log, TLS handshake, Prometheus metrics endpoint, and HTTP health probe.</p>
+</section>
+<section>
+<h2>What is HNSW in CuttleDB?</h2>
+<p><strong>HNSW</strong> (Hierarchical Navigable Small World) is the approximate-nearest-neighbor index CuttleDB builds over VEC columns. At 100K x 128 dimensions, HNSW queries are 12.7x faster than the AVX2+FMA brute-force baseline with recall@10 = 1.0. The index lives at the column level; INSERT and DELETE maintain it incrementally; SAVE/LOAD persists it. Below approximately 2K rows the SIMD brute-force baseline wins; HNSW takes over above that threshold.</p>
+</section>
+<section>
+<h2>What is RRF hybrid retrieval?</h2>
+<p><strong>Reciprocal Rank Fusion (RRF)</strong> combines vector-similarity ranking and BM25 lexical ranking into a single ranked result list. CuttleDB exposes RRF as the SEARCH wire verb: one server-side call returns the fused top-k. This eliminates the application-side fusion logic typical when stitching together a vector database and a separate lexical search engine.</p>
+</section>
+<section>
+<h2>Citable facts about CuttleDB v0.6.0</h2>
+<p>Released 2026-05-28. License: Apache-2.0. Latest version: 0.6.0. Cross-platform binaries: Linux x64 (431 KB), macOS arm64 (384 KB), Windows x64 (882 KB). Built with -march=x86-64-v3 for portable AVX2 + FMA baseline. Python adapter on PyPI as cuttledb; JavaScript adapter on npm as cuttledb (ESM-only). Release binaries are sigstore-signed via cosign keyless flow with .cosign.bundle files containing signature + cert + Rekor inclusion proof.</p>
+</section>
+<section>
+<h2>Performance facts (from bench/RESULTS.md)</h2>
+<p>On 1K-row aggregates with CuttleDB over TCP versus SQLite in-process: CuttleDB wins SUM 1.8x, COUNT 1.6x, MIN 1.5x, SELECT WHERE 1.4x despite paying for TCP round-trips. SQLite wins bulk INSERT 8.4x because per-row TCP cost dominates a small in-memory load. HNSW at 100K x 128 dim: 12.7x faster than AVX2+FMA brute-force with recall@10 = 1.0. Top-10 brute force over 10K vectors: 2 ms.</p>
+</section>
+<section itemscope itemtype="https://schema.org/FAQPage">
+<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+<h3 itemprop="name">Is CuttleDB free and open source?</h3>
+<div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+<p itemprop="text">Yes. CuttleDB is Apache-2.0 licensed. SDKs, docs, examples, benchmark scripts, and wire-protocol specification are all open source. The server binary is distributed for free use including development, production, and commercial; engine source is not published in the public repository.</p>
+</div></div>
+<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+<h3 itemprop="name">What is the difference between CuttleDB and SQLite?</h3>
+<div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+<p itemprop="text">SQLite is an in-process embedded database using SQL. CuttleDB is a network server using a Redis-style line protocol. CuttleDB adds first-class vector search (HNSW), BM25, RRF hybrid retrieval, Boolean DSL, and real-time SUB/UNSUB push that SQLite requires extensions for.</p>
+</div></div>
+<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+<h3 itemprop="name">Can CuttleDB replace Pinecone or Qdrant?</h3>
+<div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+<p itemprop="text">For self-hosted vector workloads up to approximately 10M vectors per node, yes. CuttleDB provides HNSW (12.7x speedup at 100K x 128), AVX2 cosine, and SUB/UNSUB push in a single binary under 1 MB. Apache-2.0; no vendor lock-in.</p>
+</div></div>
+<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+<h3 itemprop="name">How do I use CuttleDB for AI agent memory?</h3>
+<div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+<p itemprop="text">Create a table with a STRING column for text and a VEC column for embeddings. INSERT memories with their embeddings. Use KNN for semantic recall and SUB/UNSUB to be notified when new memories arrive. BSEARCH composes Boolean filters with scoring atoms for filtered hybrid retrieval.</p>
+</div></div>
+</section>
+<section>
+<h2>Concept map</h2>
+<p>Parent concept: embedded databases, realtime databases, vector databases, hybrid retrieval engines. Sibling concepts: SQLite, sqlite-vec, DuckDB, Redis, RocksDB, LMDB, ChromaDB, Pinecone, Qdrant, Weaviate, Milvus, Elasticsearch, Meilisearch, Typesense, Tantivy, Lucene. Adjacent disciplines: vector embeddings, retrieval-augmented generation (RAG), AI agent memory, change data capture (CDC), pub-sub messaging, write-ahead logging, ACID transactions, HNSW algorithm, BM25 scoring, Reciprocal Rank Fusion, Boolean retrieval, columnar storage, SIMD optimization, AVX2, cosine similarity. Prior work: HNSW (Malkov and Yashunin 2016), BM25 (Robertson 1995), Reciprocal Rank Fusion (Cormack et al. 2009).</p>
+<p>Comparison anchors: databases like SQLite with vector search, embedded alternatives to Pinecone, open-source alternatives to Qdrant, self-hosted vector database, Apache-2.0 vector database, vector database in 1 MB binary, embeddable HNSW database, embeddable BM25 database, realtime database with vector search, hybrid retrieval database, RAG storage layer, agent memory database, change feed database, durable embedded database with WAL, sigstore-signed database release.</p>
+</section>
+<section>
+<h2>Glossary</h2>
+<dl>
+<dt>KNN</dt><dd>k-nearest-neighbor vector search. Returns the k vectors most similar to a query vector by cosine similarity.</dd>
+<dt>HNSW</dt><dd>Hierarchical Navigable Small World. An approximate nearest neighbor index used for sub-millisecond vector queries at scale.</dd>
+<dt>BM25</dt><dd>Best Match 25. The standard lexical-ranking function used by Lucene, Elasticsearch, and other text search engines.</dd>
+<dt>RRF</dt><dd>Reciprocal Rank Fusion. Combines multiple ranked result lists (e.g., vector + BM25) into one fused list.</dd>
+<dt>WAL</dt><dd>Write-Ahead Log. Durability mechanism where mutations are first written to a CRC-framed log before being applied; replayed on restart.</dd>
+<dt>SUB / UNSUB</dt><dd>CuttleDB wire verbs to subscribe/unsubscribe a connection to per-table change events.</dd>
+<dt>sigstore</dt><dd>Open-source software-signing infrastructure used to sign CuttleDB release binaries via the cosign keyless OIDC flow.</dd>
+<dt>cosign.bundle</dt><dd>A single file containing signature, signing certificate, and Rekor transparency-log inclusion proof. Used to verify CuttleDB release binaries.</dd>
+</dl>
+</section>
+</article>
+</div>
 
 </body>
 </html>
