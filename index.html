@@ -113,85 +113,218 @@
 </script>
 
 <style>
-  /* Brutalist minimal: white bg, black text, system serif, narrow column,
-     classic blue links, no decoration. Inspired by suckless / djb / bellard. */
-  html { background: #fff; color: #000; }
+  /* Modern minimal: clean sans, off-white, generous spacing, one quiet accent.
+     Inspired by htmx, fly.io, val.town, Linear changelog. */
+
+  :root {
+    --bg:        #ffffff;
+    --text:      #1a1a1a;
+    --text-soft: #4a4a4a;
+    --text-mute: #6e6e6e;
+    --line:      #e8e8e8;
+    --line-soft: #f0f0f0;
+    --code-bg:   #f6f7f9;
+    --accent:    #2563eb;
+    --accent-bg: #eff5ff;
+    --max:       44em;
+  }
+
+  * { box-sizing: border-box; }
+  html { background: var(--bg); color: var(--text); -webkit-text-size-adjust: 100%; }
   body {
-    max-width: 42em;
-    margin: 2em auto 4em auto;
-    padding: 0 1em;
-    font-family: Georgia, Cambria, 'Times New Roman', Times, serif;
-    font-size: 16px;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 3.5rem 1.5rem 6rem 1.5rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16.5px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Top header */
+  header { margin-bottom: 2.5rem; }
+  header .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    font-size: 0.92rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  header .brand {
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+  header .links { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+  header .links a { color: var(--text-mute); text-decoration: none; }
+  header .links a:hover { color: var(--text); }
+
+  h1 {
+    font-size: 2.1rem;
+    line-height: 1.18;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    margin: 0 0 0.75rem 0;
+  }
+  .lede {
+    font-size: 1.15rem;
+    color: var(--text-soft);
+    margin: 0 0 1.25rem 0;
     line-height: 1.5;
   }
-  h1 { font-size: 2em; margin: 0 0 0.2em 0; text-align: center; }
-  h2 { font-size: 1.3em; margin: 2em 0 0.5em 0; }
-  h3 { font-size: 1.05em; margin: 1.5em 0 0.3em 0; }
-  h1, h2, h3 { font-weight: bold; }
-  p  { margin: 0.6em 0; }
-  ul, ol { margin: 0.6em 0; padding-left: 1.6em; }
-  li { margin: 0.2em 0; }
-  hr {
-    border: 0;
-    border-top: 1px solid #000;
-    margin: 2em 0;
+  .pill {
+    display: inline-block;
+    background: var(--accent-bg);
+    color: var(--accent);
+    padding: 0.18rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
   }
-  a { color: #0000ee; text-decoration: underline; }
-  a:visited { color: #551a8b; }
-  code, pre, kbd, samp {
-    font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace;
-    font-size: 0.92em;
+
+  /* Section rhythm */
+  h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin: 3rem 0 0.8rem 0;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 1.6rem 0 0.4rem 0;
+  }
+  p { margin: 0.7rem 0; }
+  ul, ol { margin: 0.7rem 0; padding-left: 1.4rem; }
+  li { margin: 0.25rem 0; }
+
+  /* Links */
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+  /* Code */
+  code, pre, kbd {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
   }
   pre {
-    background: #f4f4f4;
-    border-left: 2px solid #000;
-    padding: 0.6em 0.8em;
+    background: var(--code-bg);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
     overflow-x: auto;
-    margin: 0.8em 0;
-    line-height: 1.4;
+    margin: 0.9rem 0;
+    line-height: 1.55;
+    font-size: 0.86em;
   }
-  p code, li code, dt code {
-    background: #f4f4f4;
-    padding: 0 0.2em;
+  pre code { color: var(--text); }
+  p code, li code, dt code, td code {
+    background: var(--code-bg);
+    border-radius: 4px;
+    padding: 0.08em 0.36em;
+    font-size: 0.85em;
+    color: var(--text);
   }
+
+  /* Definition lists */
+  dl { margin: 0.8rem 0; }
+  dt {
+    font-weight: 600;
+    margin-top: 0.9rem;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.92em;
+    color: var(--text);
+  }
+  dd { margin: 0.25rem 0 0 0; color: var(--text-soft); }
+
+  /* Tables */
   table {
     border-collapse: collapse;
-    margin: 0.8em 0;
-    font-size: 0.95em;
+    margin: 1rem 0;
+    font-size: 0.94rem;
+    width: 100%;
   }
   th, td {
-    border: 1px solid #000;
-    padding: 0.3em 0.7em;
     text-align: left;
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid var(--line);
   }
-  th { background: #eee; }
-  dl { margin: 0.8em 0; }
-  dt { font-weight: bold; margin-top: 0.6em; }
-  dd { margin: 0 0 0.4em 1.2em; }
-  .meta {
-    text-align: center;
-    color: #444;
-    margin: 0 0 1.5em 0;
-    font-size: 0.95em;
+  th {
+    font-weight: 600;
+    color: var(--text-mute);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--text);
   }
-  .toc {
-    margin: 1em 0 2em 0;
-    text-align: center;
-    font-size: 0.95em;
+  td.num { font-variant-numeric: tabular-nums; }
+
+  /* Install grid */
+  .install-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.9rem;
+    margin: 1.2rem 0;
   }
-  .toc a { margin: 0 0.4em; }
-  blockquote {
-    margin: 0.8em 0;
-    padding-left: 1em;
-    border-left: 2px solid #999;
-    color: #333;
+  .install-card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    background: #fff;
   }
-  .ascii {
-    white-space: pre;
-    line-height: 1.2;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
+  .install-card .lbl {
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-mute);
+    margin-bottom: 0.45rem;
+    font-weight: 600;
+  }
+  .install-card pre {
+    margin: 0;
+    padding: 0.55rem 0.7rem;
+    background: var(--code-bg);
     font-size: 0.85em;
-    margin: 0.8em 0;
+  }
+
+  /* Meta line */
+  .meta-line {
+    color: var(--text-mute);
+    font-size: 0.92rem;
+    margin: 0.75rem 0 1.75rem 0;
+  }
+  .meta-line span + span::before {
+    content: "·";
+    margin: 0 0.55rem;
+    color: var(--line);
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    color: var(--text-mute);
+    font-size: 0.88rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  footer a { color: var(--text-mute); }
+  footer a:hover { color: var(--text); }
+
+  /* Responsive */
+  @media (max-width: 540px) {
+    body { padding: 2rem 1.1rem 4rem 1.1rem; font-size: 16px; }
+    h1 { font-size: 1.7rem; }
+    h2 { font-size: 1.15rem; }
   }
 </style>
 </head>
@@ -204,54 +337,52 @@ Key concepts: embedded database, vector search, HNSW, BM25, RRF hybrid retrieval
 Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory + pub/sub, no vector); Pinecone/Qdrant/Weaviate (vector-specialized cloud services); Elasticsearch (lexical-first JVM service).
 -->
 
-<h1>CuttleDB</h1>
+<header>
+  <div class="row">
+    <a class="brand" href="#">CuttleDB</a>
+    <nav class="links">
+      <a href="#install">install</a>
+      <a href="#what">what</a>
+      <a href="#quickstart">quickstart</a>
+      <a href="#showcases">showcases</a>
+      <a href="#bench">benchmarks</a>
+      <a href="#faq">faq</a>
+      <a href="https://github.com/mikedconcepcion/CuttleDB">github →</a>
+    </nav>
+  </div>
 
-<p class="meta">
-  An embedded realtime database with vector search,<br>
-  WAL durability, and event streaming.<br>
-  v0.6.0 &middot; Apache-2.0 &middot; released 2026-05-28
-</p>
+  <span class="pill">v0.6.0 · released 2026-05-28</span>
+  <h1>An embedded realtime database with vector search, WAL durability, and event streaming.</h1>
+  <p class="lede">
+    One self-contained binary. Five-mode retrieval. ACID transactions.
+    Real-time push. Zero external runtime dependencies.
+  </p>
+  <p class="meta-line">
+    <span>Apache-2.0</span>
+    <span>Python + JavaScript SDKs</span>
+    <span>Linux · macOS · Windows</span>
+    <span>sigstore-signed</span>
+  </p>
+</header>
 
-<p class="toc">
-  <a href="#install">install</a>
-  <a href="#what">what it is</a>
-  <a href="#quickstart">quickstart</a>
-  <a href="#showcases">showcases</a>
-  <a href="#bench">benchmarks</a>
-  <a href="#verify">verify</a>
-  <a href="#faq">faq</a>
-  <a href="https://github.com/mikedconcepcion/CuttleDB">github</a>
-</p>
-
-<hr>
-
-<p>
-  CuttleDB is one self-contained binary &mdash; under 1 MB per platform &mdash;
-  that gives you five retrieval modes (vector, lexical, hybrid, Boolean,
-  filtered KNN), real-time push, ACID transactions with a write-ahead log,
-  and zero external runtime dependencies. Apache-2.0. Linux, macOS, Windows.
-  Python and JavaScript SDKs.
-</p>
-
-<p>
-  It is not magic. It is a sober, small, fast embedded server that gives you
-  primitives you would otherwise stitch together from three or four systems.
-</p>
-
-<hr>
-
-<h2 id="install">Install</h2>
-
+<section id="install">
+<h2>Install</h2>
 <p>Three paths, depending on how you want to consume it.</p>
 
-<h3>Python SDK</h3>
-<pre><code>pip install cuttledb</code></pre>
-
-<h3>JavaScript / TypeScript SDK (ESM only)</h3>
-<pre><code>npm install cuttledb</code></pre>
-
-<h3>Server binary</h3>
-<pre><code>curl -L https://github.com/mikedconcepcion/CuttleDB/releases/latest</code></pre>
+<div class="install-grid">
+  <div class="install-card">
+    <div class="lbl">Python</div>
+    <pre><code>pip install cuttledb</code></pre>
+  </div>
+  <div class="install-card">
+    <div class="lbl">JavaScript · ESM</div>
+    <pre><code>npm install cuttledb</code></pre>
+  </div>
+  <div class="install-card">
+    <div class="lbl">Server binary</div>
+    <pre><code>github.com/.../releases/latest</code></pre>
+  </div>
+</div>
 
 <p>
   Pre-built binaries for Linux x64, macOS arm64, and Windows x64 are attached
@@ -259,10 +390,10 @@ Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory
   via the cosign keyless flow; verification recipe is in
   <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/SECURITY.md">SECURITY.md</a>.
 </p>
+</section>
 
-<hr>
-
-<h2 id="what">What it is</h2>
+<section id="what">
+<h2>What it is</h2>
 
 <p>
   A line-based wire protocol over TCP or WebSocket. One dispatcher. Five
@@ -272,8 +403,8 @@ Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory
 <dl>
   <dt>KNN</dt>
   <dd>k-nearest-neighbor vector search. AVX2+FMA cosine on small tables,
-      HNSW index above ~2K rows. recall@10 = 1.0 at 100K&times;128, 12.7&times;
-      faster than the brute-force baseline.</dd>
+      HNSW above ~2K rows. <code>recall@10 = 1.0</code> at 100K×128,
+      12.7× faster than the brute-force baseline.</dd>
 
   <dt>LSEARCH</dt>
   <dd>BM25 lexical scoring over a STRING column with an inverted index.</dd>
@@ -291,19 +422,19 @@ Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory
       server-side.</dd>
 </dl>
 
-<p>Plus, in the same binary:</p>
+<p>And in the same binary:</p>
 
 <ul>
-  <li>Real-time <code>SUB</code> / <code>UNSUB</code> push (per-table change events as <code>&gt;EVT</code> lines).</li>
+  <li>Real-time <code>SUB</code> / <code>UNSUB</code> push — per-table change events as <code>&gt;EVT</code> lines.</li>
   <li>ACID <code>BEGIN</code> / <code>COMMIT</code> / <code>ROLLBACK</code> with CRC32-framed write-ahead log; mid-transaction kill replays cleanly on restart.</li>
   <li>Multi-token <code>AUTH</code> over the same port.</li>
   <li>TLS handshake, NDJSON audit log, Prometheus <code>/metrics</code>, HTTP <code>/health</code>.</li>
   <li>DoS defenses: <code>--max-conn</code>, payload size limits, connection-guard on long-running ops.</li>
 </ul>
+</section>
 
-<hr>
-
-<h2 id="quickstart">Quickstart</h2>
+<section id="quickstart">
+<h2>Quickstart</h2>
 
 <p>Start the server, then talk to it from Python:</p>
 
@@ -328,19 +459,19 @@ await db.insert("notes", [[1, "hello world", new Array(128).fill(0.1)]]);
 
 const rows = await db.knn("notes", "vec", { query: new Array(128).fill(0.1), k: 5 });
 console.log(rows);</code></pre>
+</section>
 
-<hr>
-
-<h2 id="showcases">Showcases</h2>
+<section id="showcases">
+<h2>Showcases</h2>
 
 <p>Three things you would otherwise compose from several systems.</p>
 
-<h3>1. Agent memory in one binary</h3>
+<h3>Agent memory in one binary</h3>
 
 <p>
   A long-running agent needs to remember past observations, recall the
-  semantically nearest ones, and be notified when new ones arrive. With
-  CuttleDB that is one table and three verbs.
+  semantically nearest ones, and be notified when new ones arrive. One table
+  and three verbs.
 </p>
 
 <pre><code>db.create_table("memory", "id INT, text STRING, embed VEC(384), ts INT")
@@ -355,23 +486,22 @@ recent = db.knn("memory", "embed", query=embed_q, k=5)
 for evt in db.subscribe("memory"):
     update_local_cache(evt)</code></pre>
 
-<h3>2. Real-time UI without a separate pub/sub</h3>
+<h3>Real-time UI without a separate pub/sub</h3>
 
 <p>
-  A dashboard wants to render new rows as they land &mdash; without polling and
+  A dashboard wants to render new rows as they land — without polling and
   without Redis sitting next to your database. <code>SUB</code> over WebSocket
   delivers row-level events from the same store you queried.
 </p>
 
-<pre><code>// Browser / Node ESM client.
-const db = await connect({ url: "ws://localhost:7878" });
+<pre><code>const db = await connect({ url: "ws://localhost:7878" });
 const stream = await db.subscribe("orders");
 for await (const evt of stream) {
     // evt = { table: "orders", op: "INSERT", row: { id, item, qty } }
     appendRow(evt.row);
 }</code></pre>
 
-<h3>3. Hybrid retrieval in one roundtrip</h3>
+<h3>Hybrid retrieval in one roundtrip</h3>
 
 <p>
   Vector recall alone misses exact-term matches. BM25 alone misses paraphrases.
@@ -385,7 +515,7 @@ for await (const evt of stream) {
     k=10,
 )</code></pre>
 
-<p>For the more expressive case &mdash; Boolean over filters and scoring atoms:</p>
+<p>The more expressive case — Boolean over filters and scoring atoms:</p>
 
 <pre><code>rows = db.bsearch(
     "docs",
@@ -394,35 +524,35 @@ for await (const evt of stream) {
     bindings=[embed_q, "rank fusion"],
     k=10,
 )</code></pre>
+</section>
 
-<hr>
-
-<h2 id="bench">Benchmarks</h2>
+<section id="bench">
+<h2>Benchmarks</h2>
 
 <p>
-  Honest numbers from <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/RESULTS.md">bench/RESULTS.md</a>.
+  From <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/RESULTS.md">bench/RESULTS.md</a>.
   CuttleDB is a network server; SQLite is in-process. We pay for TCP, they don't.
   The win is in <em>read-path</em> aggregates and in <em>vector</em> primitives
   that SQLite needs extensions for.
 </p>
 
-<h3>Read-path aggregates &mdash; 1K rows, CuttleDB over TCP vs SQLite :memory:</h3>
+<h3>1K-row aggregates · CuttleDB over TCP vs SQLite :memory:</h3>
 
 <table>
-  <tr><th>operation</th><th>CuttleDB</th><th>SQLite</th><th>ratio</th></tr>
-  <tr><td>SUM</td>          <td>faster</td><td>slower</td><td>1.8&times; CuttleDB</td></tr>
-  <tr><td>COUNT</td>        <td>faster</td><td>slower</td><td>1.6&times; CuttleDB</td></tr>
-  <tr><td>MIN</td>          <td>faster</td><td>slower</td><td>1.5&times; CuttleDB</td></tr>
-  <tr><td>SELECT WHERE</td> <td>faster</td><td>slower</td><td>1.4&times; CuttleDB</td></tr>
-  <tr><td>bulk INSERT</td>  <td>slower</td><td>faster</td><td>8.4&times; SQLite (TCP overhead)</td></tr>
+  <tr><th>operation</th><th>winner</th><th>ratio</th></tr>
+  <tr><td>SUM</td>          <td>CuttleDB</td><td class="num">1.8×</td></tr>
+  <tr><td>COUNT</td>        <td>CuttleDB</td><td class="num">1.6×</td></tr>
+  <tr><td>MIN</td>          <td>CuttleDB</td><td class="num">1.5×</td></tr>
+  <tr><td>SELECT WHERE</td> <td>CuttleDB</td><td class="num">1.4×</td></tr>
+  <tr><td>bulk INSERT</td>  <td>SQLite</td>  <td class="num">8.4× (TCP overhead)</td></tr>
 </table>
 
-<h3>Vector KNN &mdash; 100K rows, 128-dim</h3>
+<h3>Vector KNN · 100K rows × 128 dim</h3>
 
 <table>
   <tr><th>method</th><th>throughput</th><th>recall@10</th></tr>
-  <tr><td>AVX2+FMA brute force</td><td>baseline</td><td>1.0</td></tr>
-  <tr><td>HNSW index</td><td>12.7&times; baseline</td><td>1.0</td></tr>
+  <tr><td>AVX2+FMA brute force</td><td class="num">baseline</td><td class="num">1.0</td></tr>
+  <tr><td>HNSW index</td>          <td class="num">12.7× baseline</td><td class="num">1.0</td></tr>
 </table>
 
 <p>
@@ -430,15 +560,15 @@ for await (const evt of stream) {
   See <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/HNSW_BENCH.md">bench/HNSW_BENCH.md</a>
   for the full HNSW sweep.
 </p>
+</section>
 
-<hr>
-
-<h2 id="verify">Verify a release</h2>
+<section id="verify">
+<h2>Verify a release</h2>
 
 <p>
   Every binary in every release ships with a <code>.cosign.bundle</code> next
-  to it &mdash; signature, signing certificate, and Rekor transparency-log
-  inclusion proof. Verify it with the
+  to it — signature, signing certificate, and Rekor transparency-log inclusion
+  proof. Verify with the
   <a href="https://docs.sigstore.dev/cosign/installation/">cosign</a> CLI:
 </p>
 
@@ -449,14 +579,14 @@ for await (const evt of stream) {
   cuttledb-linux-x64</code></pre>
 
 <p>
-  The expected output is <code>Verified OK</code>. Full recipe and identity
-  pinning for production use is in
+  Expected output: <code>Verified OK</code>. Full recipe and identity pinning
+  for production use is in
   <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/SECURITY.md">SECURITY.md</a>.
 </p>
+</section>
 
-<hr>
-
-<h2 id="faq">FAQ</h2>
+<section id="faq">
+<h2>FAQ</h2>
 
 <h3>Is CuttleDB free and open source?</h3>
 <p>
@@ -471,9 +601,9 @@ for await (const evt of stream) {
   SQLite is in-process and uses SQL. CuttleDB is a small network server
   using a Redis-style line protocol. CuttleDB has first-class vector search
   (HNSW), BM25, RRF hybrid retrieval, Boolean DSL, and real-time SUB/UNSUB
-  built in &mdash; things SQLite requires extensions for. CuttleDB pays for
-  TCP round-trips that SQLite avoids: SQLite wins bulk INSERT 8.4&times; for
-  that reason, but CuttleDB wins read-path aggregates 1.4&ndash;1.8&times;.
+  built in — things SQLite requires extensions for. CuttleDB pays for TCP
+  round-trips that SQLite avoids: SQLite wins bulk INSERT 8.4× for that
+  reason, but CuttleDB wins read-path aggregates 1.4–1.8×.
 </p>
 
 <h3>How does it compare to Redis?</h3>
@@ -487,10 +617,10 @@ for await (const evt of stream) {
 <h3>How does it compare to Pinecone or Qdrant?</h3>
 <p>
   For self-hosted vector workloads up to ~10M vectors per node, CuttleDB is
-  enough: HNSW with 12.7&times; speedup at 100K&times;128, AVX2 cosine,
-  SUB/UNSUB push, in a single binary under 1 MB. Dedicated vector services
-  remain more specialized for multi-region distributed indexes and exotic
-  tuning. CuttleDB is Apache-2.0; no vendor lock-in.
+  enough: HNSW with 12.7× speedup at 100K×128, AVX2 cosine, SUB/UNSUB push,
+  in a single binary under 1 MB. Dedicated vector services remain more
+  specialized for multi-region distributed indexes and exotic tuning.
+  CuttleDB is Apache-2.0; no vendor lock-in.
 </p>
 
 <h3>How does it compare to Elasticsearch?</h3>
@@ -519,30 +649,23 @@ for await (const evt of stream) {
   filters with scoring atoms when you need to constrain (e.g., "only
   memories from this session AND nearest to this query").
 </p>
+</section>
 
-<hr>
-
+<section>
 <h2>Links</h2>
-
 <ul>
   <li><a href="https://github.com/mikedconcepcion/CuttleDB">github.com/mikedconcepcion/CuttleDB</a></li>
-  <li><a href="https://github.com/mikedconcepcion/CuttleDB/releases">Releases</a></li>
-  <li><a href="https://pypi.org/project/cuttledb/">PyPI</a> &middot; <a href="https://www.npmjs.com/package/cuttledb">npm</a></li>
-  <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/README.md">README</a></li>
-  <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/ARCHITECTURE.md">Architecture</a></li>
-  <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/PROTOCOL.md">Wire protocol</a></li>
-  <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/SECURITY.md">Security &amp; signature verification</a></li>
-  <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/RESULTS.md">Benchmarks</a></li>
-  <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/CHANGELOG.md">Changelog</a></li>
-  <li><a href="/CuttleDB/llms.txt">llms.txt</a> &middot; <a href="/CuttleDB/llms-full.txt">llms-full.txt</a></li>
+  <li><a href="https://github.com/mikedconcepcion/CuttleDB/releases">Releases</a> · <a href="https://pypi.org/project/cuttledb/">PyPI</a> · <a href="https://www.npmjs.com/package/cuttledb">npm</a></li>
+  <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/README.md">README</a> · <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/ARCHITECTURE.md">Architecture</a> · <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/PROTOCOL.md">Wire protocol</a></li>
+  <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/SECURITY.md">Security &amp; signature verification</a> · <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/RESULTS.md">Benchmarks</a> · <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/CHANGELOG.md">Changelog</a></li>
+  <li><a href="/CuttleDB/llms.txt">llms.txt</a> · <a href="/CuttleDB/llms-full.txt">llms-full.txt</a></li>
 </ul>
+</section>
 
-<hr>
-
-<p class="meta">
-  CuttleDB &middot; Apache-2.0 &middot;
-  <a href="https://github.com/mikedconcepcion/CuttleDB">source</a>
-</p>
+<footer>
+  <div>CuttleDB · Apache-2.0</div>
+  <div><a href="https://github.com/mikedconcepcion/CuttleDB">source</a></div>
+</footer>
 
 <div aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;">
 <article itemscope itemtype="https://schema.org/SoftwareApplication">
