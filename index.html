@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CuttleDB — embedded realtime database with vector search</title>
+<meta name="description" content="Embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary, no external runtime dependencies. Five-mode retrieval, ACID transactions, sigstore-signed releases.">
+<meta property="og:title" content="CuttleDB">
+<meta property="og:description" content="Embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary, no external runtime dependencies.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mikedconcepcion.github.io/CuttleDB">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="canonical" href="https://mikedconcepcion.github.io/CuttleDB">
+<style>
+  :root {
+    --bg:           #0a0a0a;
+    --surface:      #111111;
+    --surface-2:    #161616;
+    --border:       #232323;
+    --border-soft:  #1a1a1a;
+    --text:         #e8e8e8;
+    --text-soft:    #c0c0c0;
+    --text-muted:   #707070;
+    --accent:       #ff7849;
+    --accent-soft:  #ff784920;
+    --accent-line:  #ff784940;
+    --code-bg:      #060606;
+    --code-green:   #adff7a;
+    --code-blue:    #6fb8ff;
+    --code-purple:  #d49bff;
+    --code-comment: #5a5a5a;
+    --max-content:  920px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.55;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s;
+  }
+  a:hover { border-bottom-color: var(--accent); }
+  code, pre {
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  pre code { color: var(--text-soft); }
+  .kw   { color: var(--code-purple); }
+  .str  { color: var(--code-green); }
+  .num  { color: var(--code-blue); }
+  .com  { color: var(--code-comment); font-style: italic; }
+  .fn   { color: var(--code-blue); }
+  .accent { color: var(--accent); }
+  p code, li code {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.1em 0.4em;
+    color: var(--accent);
+    font-size: 0.88em;
+  }
+  nav {
+    border-bottom: 1px solid var(--border-soft);
+    padding: 1rem 1.5rem;
+    position: sticky;
+    top: 0;
+    background: rgba(10, 10, 10, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+  nav .wrap {
+    max-width: var(--max-content);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+  nav .brand {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text);
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  nav .brand .dot {
+    width: 0.6em; height: 0.6em;
+    background: var(--accent);
+    border-radius: 50%;
+    display: inline-block;
+  }
+  nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    font-size: 0.92rem;
+  }
+  nav ul a { color: var(--text-soft); border: none; }
+  nav ul a:hover { color: var(--accent); }
+  nav .gh {
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  nav .gh:hover { border-color: var(--accent); }
+  section { padding: 4rem 1.5rem; }
+  section.tight { padding: 2rem 1.5rem; }
+  .wrap { max-width: var(--max-content); margin: 0 auto; }
+  .hero {
+    padding-top: 5rem;
+    padding-bottom: 3rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -200px; left: 50%;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, var(--accent-soft) 0%, transparent 70%);
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  .hero .pill {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--accent-line);
+    color: var(--accent);
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-bottom: 1.25rem;
+  }
+  .hero h1 {
+    font-size: clamp(2.4rem, 6vw, 3.5rem);
+    line-height: 1.1;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+  }
+  .hero h1 .accent { color: var(--accent); }
+  .hero .lede {
+    font-size: clamp(1.1rem, 2vw, 1.3rem);
+    color: var(--text-soft);
+    max-width: 720px;
+    margin-bottom: 0.75rem;
+  }
+  .hero .sub {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+  .hero .ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .btn {
+    display: inline-block;
+    padding: 0.7rem 1.3rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid var(--border);
+    color: var(--text);
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .btn.primary:hover {
+    background: #ffa07a;
+    border-color: #ffa07a;
+    color: #000;
+  }
+  .install {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .install .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.4rem;
+    transition: border-color 0.15s;
+  }
+  .install .card:hover { border-color: var(--accent-line); }
+  .install .card .label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+  }
+  .install .card pre {
+    background: var(--code-bg);
+    padding: 0.6rem 0.8rem;
+    margin: 0;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-soft);
+  }
+  h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.01em;
+  }
+  h2 .accent { color: var(--accent); }
+  .section-sub {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 2rem;
+  }
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+  .features .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem 1.4rem;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .features .card:hover {
+    border-color: var(--accent-line);
+    transform: translateY(-2px);
+  }
+  .features .card .icon {
+    width: 36px; height: 36px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    margin-bottom: 0.9rem;
+    font-size: 1.05rem;
+  }
+  .features .card h3 {
+    font-size: 1.05rem;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+  }
+  .features .card p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+  .arch {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    overflow-x: auto;
+    font-family: ui-monospace, 'SF Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--text-soft);
+    white-space: pre;
+  }
+  .arch .accent { color: var(--accent); }
+  .arch .label { color: var(--code-blue); }
+  .arch .com { color: var(--code-comment); }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+  .stats .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+  }
+  .stats .stat .num {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+    line-height: 1.2;
+  }
+  .stats .stat .label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 0.3rem;
+    display: block;
+  }
+  .verify {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+  footer {
+    border-top: 1px solid var(--border-soft);
+    padding: 2.5rem 1.5rem;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
+  footer .wrap {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  footer ul { list-style: none; display: flex; gap: 1.5rem; }
+  footer ul a { color: var(--text-muted); border: none; }
+  footer ul a:hover { color: var(--accent); }
+  @media (max-width: 720px) {
+    nav ul { gap: 1rem; font-size: 0.85rem; }
+    nav ul li:nth-child(2) { display: none; }
+    section { padding: 3rem 1.25rem; }
+    .hero { padding-top: 3rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a href="#" class="brand"><span class="dot"></span> CuttleDB</a>
+    <ul>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#quickstart">Quickstart</a></li>
+      <li><a href="#verify">Verify</a></li>
+      <li><a class="gh" href="https://github.com/mikedconcepcion/CuttleDB">GitHub →</a></li>
+    </ul>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">v0.6.0 — released 2026-05-28</span>
+    <h1>An embedded realtime database with <span class="accent">vector search</span>,<br>WAL durability, and event streaming.</h1>
+    <p class="lede">
+      One self-contained binary, no external runtime dependencies. Five-mode
+      retrieval, ACID transactions, real-time push, sigstore-signed releases.
+    </p>
+    <p class="sub">
+      Apache-2.0 · Python + JavaScript SDKs · Linux / macOS / Windows
+    </p>
+    <div class="ctas">
+      <a href="#install" class="btn primary">Get started →</a>
+      <a href="https://github.com/mikedconcepcion/CuttleDB" class="btn">View on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<section id="install" class="tight">
+  <div class="wrap">
+    <h2>Install <span class="accent">→</span></h2>
+    <p class="section-sub">Three paths. Pick the one that matches your stack.</p>
+    <div class="install">
+      <div class="card">
+        <div class="label">Python SDK</div>
+        <pre><code><span class="accent">pip install</span> cuttledb</code></pre>
+      </div>
+      <div class="card">
+        <div class="label">JavaScript SDK · ESM</div>
+        <pre><code><span class="accent">npm install</span> cuttledb</code></pre>
+      </div>
+      <div class="card">
+        <div class="label">Server binary</div>
+        <pre><code><span class="com"># Linux / macOS / Windows</span>
+<a href="https://github.com/mikedconcepcion/CuttleDB/releases/latest" style="color: var(--accent);">Download release →</a></code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Why <span class="accent">CuttleDB</span>?</h2>
+    <p class="section-sub">
+      Most modern stacks pull in three or four databases to do what one
+      process can do at the substrate level. CuttleDB collapses them.
+    </p>
+    <div class="features">
+      <div class="card">
+        <div class="icon">⚡</div>
+        <h3>Substrate-level speed</h3>
+        <p>
+          Column store with running aggregates. <code>COUNT</code> and
+          <code>SUM</code> are O(1). AVX2 SIMD predicate scans. Faster
+          than SQLite <code>:memory:</code> on read-path aggregates at
+          1K-row workloads despite TCP overhead.
+        </p>
+      </div>
+      <div class="card">
+        <div class="icon">⊹</div>
+        <h3>Vector search built-in</h3>
+        <p>
+          First-class <code>VEC</code> columns + HNSW index. Top-10 over
+          10K vectors in 2ms. At 100K × 128: <strong>12.7×</strong>
+          faster than the AVX2+FMA brute-force baseline. No Pinecone,
+          no separate service.
+        </p>
+      </div>
+      <div class="card">
+        <div class="icon">⇄</div>
+        <h3>Real-time push</h3>
+        <p>
+          <code>SUB</code> / <code>UNSUB</code> per-table change feed.
+          Every mutation triggers a <code>&gt;EVT</code> line on every
+          subscribed socket. <code>LOG</code> ring buffer for replay
+          after disconnect.
+        </p>
+      </div>
+      <div class="card">
+        <div class="icon">🔒</div>
+        <h3>Enterprise-tier security</h3>
+        <p>
+          Multi-token auth, NDJSON audit log, TLS, <code>--max-conn</code>
+          DoS cap, rate limit, structured slow-query log, HTTP
+          <code>/health</code> probe, Prometheus <code>/metrics</code>.
+        </p>
+      </div>
+      <div class="card">
+        <div class="icon">⛁</div>
+        <h3>Durable, transactional</h3>
+        <p>
+          ACID transactions: <code>BEGIN</code> / <code>COMMIT</code> /
+          <code>ROLLBACK</code>. Write-ahead log with CRC32 frames +
+          mid-transaction kill replay (exercised by integration tests).
+        </p>
+      </div>
+      <div class="card">
+        <div class="icon">⌂</div>
+        <h3>One self-contained binary</h3>
+        <p>
+          Under 1 MB per platform. No JVM, no Python on the server side,
+          no Redis, no SQLite library. Copy the binary, run it.
+          Multi-platform CI: Linux + macOS + Windows.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="quickstart">
+  <div class="wrap">
+    <h2>Quickstart <span class="accent">→</span> Python</h2>
+    <p class="section-sub">Open a handle, create a typed table, insert, query.</p>
+    <pre><code><span class="kw">from</span> cuttledb <span class="kw">import</span> CuttleDB, ColType
+
+<span class="kw">with</span> CuttleDB.<span class="fn">connect</span>(<span class="str">"127.0.0.1"</span>, <span class="num">7780</span>) <span class="kw">as</span> db:
+    hid = db.<span class="fn">open</span>()
+    tid = db.<span class="fn">create</span>(hid, <span class="str">"memory"</span>, [
+        (<span class="str">"text"</span>,      ColType.STRING),
+        (<span class="str">"embedding"</span>, ColType.VEC, <span class="num">768</span>),
+    ])
+
+    db.<span class="fn">insert</span>(hid, tid, [<span class="str">"hello world"</span>, [<span class="num">0.1</span>, <span class="num">0.2</span>, ...]])
+
+    <span class="com"># Vector KNN — AVX2 cosine + partial sort in one C call</span>
+    hits = db.<span class="fn">knn</span>(hid, tid, col=<span class="num">1</span>, k=<span class="num">5</span>, query=[<span class="num">0.15</span>, <span class="num">0.18</span>, ...])
+    <span class="kw">for</span> row_id, score <span class="kw">in</span> hits:
+        <span class="fn">print</span>(score, db.<span class="fn">get</span>(hid, tid, row_id))
+
+    <span class="com"># Real-time push — subscribe + drain events</span>
+    db.<span class="fn">sub</span>(hid, tid)
+    <span class="kw">for</span> evt <span class="kw">in</span> db.<span class="fn">poll_events</span>(timeout=<span class="num">1.0</span>):
+        <span class="fn">print</span>(<span class="str">"changed:"</span>, evt)</code></pre>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Architecture</h2>
+    <p class="section-sub">
+      One binary, no daemon hierarchy, no embedded language interpreter.
+    </p>
+    <div class="arch">[client] <span class="com">── line protocol (TCP / WebSocket) ──</span> [<span class="accent">cuttledb-server</span>]
+                                                  │
+                  <span class="com">┌───────────────────────────────┼───────────────────────────────┐</span>
+                  ↓                               ↓                               ↓
+        <span class="label">column store</span>                 <span class="label">indexes</span>                    <span class="label">WAL + observability</span>
+        <span class="com">─────────────</span>                 <span class="com">───────</span>                    <span class="com">───────────────────</span>
+        INT  FLOAT  STRING            HNSW (vector)              CRC32 frames
+        VEC  DATETIME                 BM25 (lexical)             Replay on start
+        AVX2 SIMD scans               Boolean DSL                Audit NDJSON
+        O(1) COUNT + SUM              RRF hybrid                 Slow-query log
+                                                                 Prometheus /metrics</div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Numbers <span class="accent">→</span></h2>
+    <p class="section-sub">
+      From <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/RESULTS.md">bench/RESULTS.md</a>
+      and <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/HNSW_BENCH.md">bench/HNSW_BENCH.md</a>
+      — methodology + every script reproducible from a clean checkout.
+    </p>
+    <div class="stats">
+      <div class="stat">
+        <span class="num">12.7×</span>
+        <span class="label">HNSW vs brute-force<br>at 100K × 128</span>
+      </div>
+      <div class="stat">
+        <span class="num">2 ms</span>
+        <span class="label">Top-10 over 10K<br>vectors brute-force</span>
+      </div>
+      <div class="stat">
+        <span class="num">O(1)</span>
+        <span class="label">COUNT + SUM<br>via cached aggregates</span>
+      </div>
+      <div class="stat">
+        <span class="num">&lt;1 MB</span>
+        <span class="label">Self-contained binary<br>per platform</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="verify">
+  <div class="wrap">
+    <h2>Verify a release</h2>
+    <p class="section-sub">
+      Every binary ships with a sigstore <code>.cosign.bundle</code> —
+      signature + cert + Rekor transparency-log inclusion proof.
+    </p>
+    <div class="verify">
+<pre><code><span class="com"># 1. Checksum</span>
+sha256sum -c SHA256SUMS.txt
+
+<span class="com"># 2. Signature (requires cosign v2.0+)</span>
+cosign verify-blob \
+  --bundle cuttledb-server-linux-x64.cosign.bundle \
+  --certificate-identity-regexp <span class="str">".*"</span> \
+  --certificate-oidc-issuer-regexp <span class="str">".*"</span> \
+  cuttledb-server-linux-x64</code></pre>
+    </div>
+    <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
+      Cross-reference Rekor entries at
+      <a href="https://search.sigstore.dev/">search.sigstore.dev</a>.
+      Full security policy:
+      <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/SECURITY.md">SECURITY.md</a>.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <strong style="color: var(--text);">CuttleDB v0.6.0</strong> ·
+      Apache-2.0 ·
+      <a href="https://github.com/mikedconcepcion/CuttleDB">github.com/mikedconcepcion/CuttleDB</a>
+    </div>
+    <ul>
+      <li><a href="https://github.com/mikedconcepcion/CuttleDB/releases/latest">Releases</a></li>
+      <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/CHANGELOG.md">Changelog</a></li>
+      <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/ROADMAP.md">Roadmap</a></li>
+      <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/PROTOCOL.md">Wire protocol</a></li>
+    </ul>
+  </div>
+</footer>
+
+</body>
+</html>
