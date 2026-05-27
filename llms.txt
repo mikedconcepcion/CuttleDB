@@ -1,0 +1,116 @@
+# CuttleDB
+
+> Embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary, no external runtime dependencies. Apache-2.0.
+
+CuttleDB is an open-source database shipped as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB. It speaks a Redis-style line protocol over TCP or WebSocket. Latest release: v0.6.0 (2026-05-28).
+
+## What CuttleDB is
+
+CuttleDB provides five retrieval modes through one wire dispatcher:
+
+- **KNN** — k-nearest-neighbor vector search (AVX2 cosine, optional HNSW)
+- **LSEARCH** — BM25 lexical search over STRING columns
+- **SEARCH** — Reciprocal Rank Fusion (RRF) of vector + BM25 in one round-trip
+- **BSEARCH** — Boolean DSL composing filters, scoring atoms, AND/OR/parens
+- **Filtered KNN** — `KNN ... WHERE col OP value` predicate-filtered vector search
+
+Other built-in capabilities:
+
+- ACID transactions with `BEGIN`/`COMMIT`/`ROLLBACK`
+- Write-ahead log (CRC32 frames) with mid-transaction kill replay
+- Real-time push: per-table `SUB`/`UNSUB` change feed, `LOG` ring buffer
+- Multi-token authentication, NDJSON audit log, TLS, rate limit, `--max-conn` cap
+- HTTP `/health` probe, Prometheus `/metrics` endpoint, structured slow-query log
+- 2-way inner equi-join, GROUPBY aggregates, DATETIME column type
+- Server-side ML compute verbs: MATMUL, MATMUL_B, FLASH_ATTN_B
+
+## What CuttleDB is NOT
+
+- Not a SQL database — uses a Redis-style line protocol (PROTOCOL.md)
+- Not a distributed database (yet) — single-instance native; client-side `Cluster` adapter for composition
+- Not a graph database — graph types planned for v1.0
+- Not an LLM inference engine — designed as data substrate, not model host
+- Not a managed cloud service — open source, self-hosted
+
+## Install
+
+```bash
+# Python SDK
+pip install cuttledb
+
+# JavaScript SDK (ESM only — use import, not require)
+npm install cuttledb
+
+# Server binary (Linux / macOS / Windows)
+# Download from GitHub Releases (sigstore-signed):
+# https://github.com/mikedconcepcion/CuttleDB/releases/latest
+```
+
+## Quickstart
+
+```python
+from cuttledb import CuttleDB, ColType
+
+with CuttleDB.connect("127.0.0.1", 7780) as db:
+    hid = db.open()
+    tid = db.create(hid, "memory", [
+        ("text",      ColType.STRING),
+        ("embedding", ColType.VEC, 768),
+    ])
+    db.insert(hid, tid, ["hello world", [0.1, 0.2, ...]])
+    hits = db.knn(hid, tid, col=1, k=5, query=[0.15, 0.18, ...])
+    db.sub(hid, tid)
+    for evt in db.poll_events(timeout=1.0):
+        print("changed:", evt)
+```
+
+## Performance (honest benchmarks)
+
+Numbers from bench/RESULTS.md and bench/HNSW_BENCH.md — every script reproducible from a clean checkout.
+
+- **1K-row aggregates:** CuttleDB-over-TCP wins SUM/COUNT/MIN/SELECT WHERE by 1.4-1.8x over SQLite in-process `:memory:`, despite paying for a TCP round-trip per query.
+- **Bulk INSERT (1K rows):** SQLite wins 8.4x — the per-row TCP cost dominates a small in-memory load. This is published as a loss, not hidden.
+- **HNSW vs brute-force at 100K x 128 dim:** 12.7x faster, recall@10 = 1.0.
+- **Top-10 brute-force over 10K vectors:** 2 ms.
+- **Binary size:** 384 KB (macOS arm64), 431 KB (Linux x64), 882 KB (Windows x64) — built `-march=x86-64-v3` for portable AVX2 baseline.
+
+## Docs
+
+- [Architecture](https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/ARCHITECTURE.md) — layer cake, data model, storage, retrieval modes
+- [Wire protocol](https://github.com/mikedconcepcion/CuttleDB/blob/main/PROTOCOL.md) — grammar for every verb
+- [Roadmap](https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/ROADMAP.md) — shipped + planned per version
+- [Why CuttleDB](https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/WHY_CUTTLEDB.md) — use case breakdown
+- [Deployment patterns](https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/DEPLOYMENT.md) — single-node, replicas, shards
+- [Benchmarks](https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/RESULTS.md) — methodology
+- [Security policy](https://github.com/mikedconcepcion/CuttleDB/blob/main/SECURITY.md) — disclosure + sigstore verification
+- [Changelog](https://github.com/mikedconcepcion/CuttleDB/blob/main/CHANGELOG.md)
+
+## Comparison points
+
+- **vs SQLite + sqlite-vec:** SQLite + sqlite-vec is excellent for vector + lexical if you don't need server-side real-time push (`SUB`/`UNSUB` is a wire verb in CuttleDB, not an app layer). CuttleDB also fuses BM25 + vector into one RRF verb (`SEARCH`) and one Boolean DSL (`BSEARCH`), eliminating app-side fusion logic.
+- **vs Redis:** Redis is in-memory KV + data structures. CuttleDB adds first-class vector search, BM25, ACID transactions, and WAL durability — but pays for TCP just as Redis does. Different shape, similar wire-level semantics.
+- **vs Pinecone / Qdrant / Weaviate:** Those are vector-specialized services (often cloud-only or container-heavy). CuttleDB is a self-hosted single binary with vector search as one of several first-class modes (alongside lexical, hybrid, Boolean DSL).
+- **vs Elasticsearch:** ES is JVM-based, hundreds of MB, lexical-search-first. CuttleDB is <1 MB, vector + lexical + hybrid equally first-class.
+
+## Licensing
+
+- Repository (Python SDK, JavaScript SDK, docs, examples, benchmark scripts, wire protocol spec): **Apache-2.0**
+- Server binary: distributed under Apache-2.0 for use (development, production, commercial). Source for the database engine inside the binary is not published in the public repo; the binary plus the open adapters plus the wire protocol cover every supported integration.
+- Release binaries are **sigstore-signed** (cosign keyless flow) — verify via `.cosign.bundle` files attached to each GitHub Release.
+
+## Author + repository
+
+- Author: Mike Dela Concepcion
+- Repository: https://github.com/mikedconcepcion/CuttleDB
+- Docs site: https://mikedconcepcion.github.io/CuttleDB/
+- Latest release: https://github.com/mikedconcepcion/CuttleDB/releases/latest
+- Issues: https://github.com/mikedconcepcion/CuttleDB/issues
+- Security disclosure: GitHub Private Vulnerability Reporting at https://github.com/mikedconcepcion/CuttleDB/security/advisories/new
+
+## Version history
+
+- **v0.6.0** (2026-05-28) — Initial public release. Cross-platform binaries, sigstore signing, Apache-2.0, PyPI + npm + GitHub Releases.
+
+## Status
+
+Production-orientation, surface still expanding. Substrate (storage, retrieval, transactions, WAL, indexes) is tested and shipped. v1.0 ships when graph types, distributed CRDT sync, mTLS, and EC keys all land — see docs/ROADMAP.md for the path.

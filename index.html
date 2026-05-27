@@ -3,14 +3,150 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CuttleDB — embedded realtime database with vector search</title>
-<meta name="description" content="Embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary, no external runtime dependencies. Five-mode retrieval, ACID transactions, sigstore-signed releases.">
-<meta property="og:title" content="CuttleDB">
-<meta property="og:description" content="Embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary, no external runtime dependencies.">
+<title>CuttleDB — embedded realtime database with vector search, BM25, and real-time push</title>
+<meta name="description" content="Embedded realtime database with vector search (HNSW), BM25, hybrid RRF, Boolean DSL, real-time SUB/UNSUB push, ACID transactions with WAL. One self-contained binary under 1 MB per platform. Apache-2.0. Python + JavaScript SDKs. Sigstore-signed releases.">
+<meta name="keywords" content="embedded database, vector search, HNSW, BM25, hybrid retrieval, RRF, real-time database, WAL, ACID, sigstore, vector database, embedded realtime, SQLite alternative, cuttledb, agent memory, AI memory database">
+<meta name="author" content="Mike Dela Concepcion">
+
+<!-- Open Graph -->
+<meta property="og:title" content="CuttleDB — embedded realtime DB with vector search in a <1 MB binary">
+<meta property="og:description" content="Embedded realtime database with vector search (HNSW), BM25 lexical, RRF hybrid, Boolean DSL, real-time SUB/UNSUB push, ACID transactions. One self-contained binary under 1 MB. Apache-2.0.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://mikedconcepcion.github.io/CuttleDB">
+<meta property="og:url" content="https://mikedconcepcion.github.io/CuttleDB/">
+<meta property="og:site_name" content="CuttleDB">
+<meta property="og:image" content="https://opengraph.githubassets.com/1/mikedconcepcion/CuttleDB">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CuttleDB — embedded realtime database with vector search">
+<meta name="twitter:description" content="One <1 MB binary. Vector search (HNSW), BM25, RRF hybrid, Boolean DSL, real-time push, ACID + WAL. Apache-2.0.">
+<meta name="twitter:image" content="https://opengraph.githubassets.com/1/mikedconcepcion/CuttleDB">
+
 <meta name="theme-color" content="#0a0a0a">
-<link rel="canonical" href="https://mikedconcepcion.github.io/CuttleDB">
+<link rel="canonical" href="https://mikedconcepcion.github.io/CuttleDB/">
+
+<!-- JSON-LD: SoftwareApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "CuttleDB",
+  "alternateName": "cuttledb",
+  "operatingSystem": "Linux, macOS, Windows",
+  "applicationCategory": "DatabaseApplication",
+  "applicationSubCategory": "Embedded Database",
+  "softwareVersion": "0.6.0",
+  "datePublished": "2026-05-28",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "url": "https://mikedconcepcion.github.io/CuttleDB/",
+  "downloadUrl": "https://github.com/mikedconcepcion/CuttleDB/releases/latest",
+  "codeRepository": "https://github.com/mikedconcepcion/CuttleDB",
+  "programmingLanguage": ["Python", "JavaScript", "TypeScript", "C"],
+  "description": "Embedded realtime database with vector search (HNSW + AVX2 cosine), BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, ACID transactions with write-ahead log. One self-contained binary under 1 MB per platform, no external runtime dependencies.",
+  "featureList": [
+    "Vector search (KNN, HNSW)",
+    "BM25 lexical search",
+    "RRF hybrid retrieval (vector + lexical fused)",
+    "Boolean DSL combining filters and scoring atoms",
+    "Filtered KNN (KNN ... WHERE)",
+    "Real-time push (SUB/UNSUB per-table change feed)",
+    "ACID transactions with WAL durability",
+    "Multi-token authentication",
+    "TLS handshake (server-side)",
+    "NDJSON audit log",
+    "Prometheus /metrics endpoint",
+    "HTTP /health probe",
+    "Cross-platform: Linux x64, macOS arm64, Windows x64",
+    "Single self-contained binary under 1 MB",
+    "Sigstore-signed release binaries"
+  ],
+  "author": {
+    "@type": "Person",
+    "name": "Mike Dela Concepcion",
+    "url": "https://github.com/mikedconcepcion"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}
+</script>
+
+<!-- JSON-LD: FAQPage (matches the visible FAQ section below) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is CuttleDB?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "CuttleDB is an embedded realtime database with vector search (HNSW + AVX2 cosine), BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, and ACID transactions with write-ahead log. It ships as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB, with no external runtime dependencies. Apache-2.0 licensed."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is CuttleDB production-ready?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The v0.x prefix is honest framing: the substrate (storage, retrieval, transactions, WAL, indexes) is tested and shipped, but the surface is still expanding. Use it today for single-node embedded workloads. Distributed sync, graph types, mTLS, and EC keys land in v0.7+; v1.0 ships when all four are in. See docs/ROADMAP.md for the exact path."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does CuttleDB compare to SQLite (with sqlite-vec)?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SQLite + sqlite-vec is excellent for vector + lexical if your real-time push lives in app code. CuttleDB adds SUB/UNSUB as a first-class wire verb (mutations broadcast to subscribed sockets in microseconds) and fuses BM25 + vector into one server-side RRF call (SEARCH) and Boolean DSL (BSEARCH), eliminating app-side fusion logic. On 1K-row aggregates CuttleDB wins SUM/COUNT/MIN/SELECT 1.4-1.8x over SQLite :memory: despite paying for TCP round-trips; SQLite wins bulk INSERT 8.4x because TCP per-row cost dominates a small load."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I use CuttleDB for AI agent memory?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. The VEC column type stores fixed-dim float32 embeddings; KNN (with AVX2 cosine) or HNSW provides semantic recall. SUB/UNSUB delivers push events when new memories arrive (live agent updates). BSEARCH composes Boolean filters with scoring atoms so you can write 'kind=playbook AND embedding~[...] AND uses>3' in one wire roundtrip. The per-binary footprint under 1 MB makes CuttleDB embeddable in an agent runtime."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What platforms does CuttleDB support?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Linux x64, macOS arm64 (Apple Silicon), and Windows x64 native binaries. Built with -march=x86-64-v3 (AVX2 + FMA baseline; Haswell 2013+ and AMD Zen 1+). The SDKs (Python via PyPI, JavaScript/TypeScript via npm) work anywhere their runtime works."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does CuttleDB support SQL?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. CuttleDB uses a Redis-style line protocol (see PROTOCOL.md). The trade-off is a much smaller wire surface to audit and parse, at the cost of no SQL standard syntax. A SQL adapter is an application-level concern; CuttleDB does not bundle one."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I verify a release binary?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Every binary in a GitHub Release ships with a matching .cosign.bundle file containing the signature, signing certificate, and Rekor transparency-log inclusion proof. Verify with cosign v2.0+: cosign verify-blob --bundle cuttledb-server-linux-x64.cosign.bundle --certificate-identity-regexp '.*' --certificate-oidc-issuer-regexp '.*' cuttledb-server-linux-x64. Cross-reference Rekor entries at search.sigstore.dev. Full security policy in SECURITY.md."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the CuttleDB license?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Apache-2.0. The repository — Python SDK, JavaScript SDK, docs, examples, benchmark scripts, and the wire protocol specification — is fully open source under Apache-2.0. The cuttledb-server binary is distributed for free use (development, production, commercial); source for the database engine inside the binary is not published in this repository. Release binaries are sigstore-signed."
+      }
+    }
+  ]
+}
+</script>
+
 <style>
   :root {
     --bg: #0a0a0a; --surface: #111111; --surface-2: #161616;
@@ -49,7 +185,7 @@
   .kw { color: var(--code-purple); } .str { color: var(--code-string); }
   .num { color: var(--code-blue); } .com { color: var(--code-comment); font-style: italic; }
   .fn { color: var(--code-blue); } .accent { color: var(--accent); }
-  p code, li code, td code {
+  p code, li code, td code, dt code, dd code {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 3px; padding: 0.1em 0.4em;
     color: var(--accent); font-size: 0.88em;
@@ -154,8 +290,6 @@
     color: var(--text-muted); font-size: 0.95rem;
     margin-bottom: 2rem; max-width: 780px;
   }
-
-  /* ── Showcase ─────────────────────────────────────────────────── */
   .showcase-block {
     border: 1px solid var(--border); border-radius: 12px;
     background: var(--surface); margin-bottom: 1.5rem;
@@ -201,16 +335,14 @@
     padding: 0; margin: 0; font-size: 0.82rem; line-height: 1.6;
   }
   .wire-line { display: block; padding: 0.05rem 0; }
-  .wire-in  { color: var(--wire-in); }      /* > client → server */
-  .wire-out { color: var(--wire-out); }     /* < server response */
-  .wire-evt { color: var(--wire-evt); }     /* >EVT push */
+  .wire-in  { color: var(--wire-in); }
+  .wire-out { color: var(--wire-out); }
+  .wire-evt { color: var(--wire-evt); }
   .wire-line .arrow { color: var(--text-muted); margin-right: 0.5rem; }
   @media (max-width: 720px) {
     .showcase-body { grid-template-columns: 1fr; }
     .showcase-code { border-right: none; border-bottom: 1px solid var(--border); }
   }
-
-  /* ── Features grid ────────────────────────────────────────────── */
   .features {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1rem;
@@ -230,8 +362,6 @@
   }
   .features .card h3 { font-size: 1.05rem; margin-bottom: 0.5rem; color: var(--text); }
   .features .card p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.55; }
-
-  /* ── Architecture diagram ─────────────────────────────────────── */
   .arch {
     background: var(--code-bg); border: 1px solid var(--border);
     border-radius: 8px; padding: 1.5rem; overflow-x: auto;
@@ -242,8 +372,6 @@
   .arch .accent { color: var(--accent); }
   .arch .label { color: var(--code-blue); }
   .arch .com { color: var(--code-comment); }
-
-  /* ── Benchmark bars ───────────────────────────────────────────── */
   .bench-section {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 8px; padding: 1.5rem 1.6rem; margin-bottom: 1.2rem;
@@ -284,8 +412,6 @@
     .bench-row { grid-template-columns: 1fr; gap: 0.3rem; }
     .bench-row .bench-num { text-align: left; }
   }
-
-  /* ── Stats ────────────────────────────────────────────────────── */
   .stats {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
@@ -302,13 +428,27 @@
     color: var(--text-muted); font-size: 0.85rem;
     margin-top: 0.3rem; display: block;
   }
-
-  /* ── Verify ───────────────────────────────────────────────────── */
   .verify {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 8px; padding: 1.5rem;
   }
-
+  .faq-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.4rem 1.6rem;
+    margin-bottom: 0.8rem;
+    transition: border-color 0.15s;
+  }
+  .faq-item:hover { border-color: var(--accent-line); }
+  .faq-item h3 {
+    font-size: 1.02rem; color: var(--text);
+    margin: 0 0 0.5rem 0; font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .faq-item p {
+    color: var(--text-soft); font-size: 0.92rem;
+    margin: 0; line-height: 1.6;
+  }
+  .faq-item p + p { margin-top: 0.6rem; }
   footer {
     border-top: 1px solid var(--border-soft);
     padding: 2.5rem 1.5rem; color: var(--text-muted);
@@ -321,6 +461,11 @@
   footer ul { list-style: none; display: flex; gap: 1.5rem; }
   footer ul a { color: var(--text-muted); border: none; }
   footer ul a:hover { color: var(--accent); }
+  .footer-meta {
+    margin-top: 1.5rem; padding-top: 1rem;
+    border-top: 1px solid var(--border-soft);
+    font-size: 0.78rem; color: var(--text-muted);
+  }
   @media (max-width: 720px) {
     nav ul { gap: 0.9rem; font-size: 0.82rem; }
     nav ul li:nth-child(2), nav ul li:nth-child(3) { display: none; }
@@ -338,7 +483,7 @@
       <li><a href="#install">Install</a></li>
       <li><a href="#showcase">Showcase</a></li>
       <li><a href="#benchmarks">Benchmarks</a></li>
-      <li><a href="#verify">Verify</a></li>
+      <li><a href="#faq">FAQ</a></li>
       <li><a class="gh" href="https://github.com/mikedconcepcion/CuttleDB">GitHub →</a></li>
     </ul>
   </div>
@@ -393,7 +538,6 @@
       against <code>cuttledb-server</code>.
     </p>
 
-    <!-- Showcase 1: Agent Memory -->
     <div class="showcase-block">
       <div class="showcase-header">
         <span class="tag">use case 1 · ai agent memory</span>
@@ -442,7 +586,6 @@
       </div>
     </div>
 
-    <!-- Showcase 2: Real-time UI -->
     <div class="showcase-block">
       <div class="showcase-header">
         <span class="tag">use case 2 · real-time ui</span>
@@ -485,7 +628,6 @@ db.<span class="fn">on</span>(<span class="str">"event"</span>, (evt) =&gt; {
       </div>
     </div>
 
-    <!-- Showcase 3: Hybrid Retrieval -->
     <div class="showcase-block">
       <div class="showcase-header">
         <span class="tag">use case 3 · hybrid retrieval</span>
@@ -751,6 +893,69 @@ cosign verify-blob \
   </div>
 </section>
 
+<section id="faq">
+  <div class="wrap">
+    <h2>FAQ</h2>
+    <p class="section-sub">
+      Common questions about scope, comparisons, and licensing. Answers are
+      structured to be quotable in agent-assisted search and chat replies.
+    </p>
+
+    <div class="faq-item">
+      <h3>What is CuttleDB?</h3>
+      <p>CuttleDB is an embedded realtime database with vector search (HNSW + AVX2 cosine), BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time <code>SUB</code>/<code>UNSUB</code> push, and ACID transactions with write-ahead log. It ships as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB, with no external runtime dependencies. Apache-2.0 licensed.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>Is CuttleDB production-ready?</h3>
+      <p>The <code>v0.x</code> prefix is honest framing: the substrate (storage, retrieval, transactions, WAL, indexes) is tested and shipped, but the surface is still expanding. Use it today for single-node embedded workloads. Distributed sync, graph types, mTLS, and EC keys land in v0.7+; v1.0 ships when all four are in. See <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/ROADMAP.md">docs/ROADMAP.md</a> for the exact path.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>How does CuttleDB compare to SQLite (with sqlite-vec)?</h3>
+      <p>SQLite + sqlite-vec is excellent for vector + lexical if your real-time push lives in app code. CuttleDB adds <code>SUB</code>/<code>UNSUB</code> as a first-class wire verb (mutations broadcast to subscribed sockets in microseconds) and fuses BM25 + vector into one server-side RRF call (<code>SEARCH</code>) and a Boolean DSL (<code>BSEARCH</code>), eliminating app-side fusion logic.</p>
+      <p>On 1K-row aggregates CuttleDB wins SUM/COUNT/MIN/SELECT 1.4–1.8× over SQLite <code>:memory:</code> despite paying for TCP round-trips. SQLite wins bulk INSERT 8.4× because TCP per-row cost dominates a small load. See benchmark table above.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>How does CuttleDB compare to Redis?</h3>
+      <p>Different shape. Redis is in-memory key-value with built-in data structures; no first-class vector or BM25 search. CuttleDB adds vector search, lexical search, ACID transactions, and WAL durability — but pays for TCP just like Redis does. If you need pub/sub + KV, Redis is great. If you need vector retrieval + change feed + durable transactions in one process, CuttleDB.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>How does CuttleDB compare to Pinecone, Qdrant, or Weaviate?</h3>
+      <p>Those are vector-specialized services (often cloud-only or container-heavy). CuttleDB is a self-hosted single binary with vector search as one of several first-class modes (alongside lexical, hybrid, Boolean DSL). Apache-2.0, no cloud, no API key, no rate limits beyond what you configure. Different trade-off: less specialized vector tuning, but you keep your data and pay no vendor.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>Can I use CuttleDB for AI agent memory?</h3>
+      <p>Yes. The <code>VEC</code> column type stores fixed-dim float32 embeddings; KNN (with AVX2 cosine) or HNSW provides semantic recall. <code>SUB</code>/<code>UNSUB</code> delivers push events when new memories arrive (live agent updates). <code>BSEARCH</code> composes Boolean filters with scoring atoms so you can write <code>kind="playbook" AND embedding~[...] AND uses&gt;3</code> in one wire roundtrip. The per-binary footprint under 1 MB makes CuttleDB embeddable in an agent runtime.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>What platforms does CuttleDB support?</h3>
+      <p>Linux x64, macOS arm64 (Apple Silicon), and Windows x64 native binaries. Built with <code>-march=x86-64-v3</code> (AVX2 + FMA baseline; Haswell 2013+ and AMD Zen 1+). The SDKs (Python via PyPI, JavaScript/TypeScript via npm) work anywhere their runtime works.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>Does CuttleDB support SQL?</h3>
+      <p>No. CuttleDB uses a Redis-style line protocol (see <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/PROTOCOL.md">PROTOCOL.md</a>). The trade-off is a much smaller wire surface to audit and parse, at the cost of no SQL standard syntax. A SQL adapter is an application-level concern; CuttleDB does not bundle one.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>How do I verify a release binary?</h3>
+      <p>Every binary in a GitHub Release ships with a matching <code>.cosign.bundle</code> file containing the signature, signing certificate, and Rekor transparency-log inclusion proof. Verify with cosign v2.0+:</p>
+      <p><code>cosign verify-blob --bundle cuttledb-server-linux-x64.cosign.bundle --certificate-identity-regexp ".*" --certificate-oidc-issuer-regexp ".*" cuttledb-server-linux-x64</code></p>
+      <p>Cross-reference Rekor entries at <a href="https://search.sigstore.dev/">search.sigstore.dev</a>. Full security policy in <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+    </div>
+
+    <div class="faq-item">
+      <h3>What is the CuttleDB license?</h3>
+      <p>Apache-2.0. The repository — Python SDK, JavaScript SDK, docs, examples, benchmark scripts, and the wire protocol specification — is fully open source under Apache-2.0. The <code>cuttledb-server</code> binary is distributed for free use (development, production, commercial); source for the database engine inside the binary is not published in this repository. Release binaries are sigstore-signed.</p>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="wrap">
     <div>
@@ -764,6 +969,12 @@ cosign verify-blob \
       <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/ROADMAP.md">Roadmap</a></li>
       <li><a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/PROTOCOL.md">Wire protocol</a></li>
     </ul>
+  </div>
+  <div class="wrap footer-meta">
+    LLM crawlers + agent assistants are explicitly welcome. See
+    <a href="/CuttleDB/llms.txt">llms.txt</a>,
+    <a href="/CuttleDB/robots.txt">robots.txt</a>,
+    <a href="/CuttleDB/sitemap.xml">sitemap.xml</a>.
   </div>
 </footer>
 
