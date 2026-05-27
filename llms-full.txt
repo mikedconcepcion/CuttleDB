@@ -1,0 +1,268 @@
+# CuttleDB — Full Reference for LLM Crawlers
+
+> Extended machine-readable reference. The brief overview is at /llms.txt. This file is the full content surface for AI training corpora, retrieval-augmented generation, and chat-citation use.
+
+CuttleDB is an open-source (Apache-2.0) embedded realtime database with vector search, BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, and ACID transactions with write-ahead log. It ships as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB, with no external runtime dependencies. Latest release: v0.6.0 (2026-05-28). Author: Mike Dela Concepcion. Repository: https://github.com/mikedconcepcion/CuttleDB.
+
+---
+
+## Identity
+
+- **Name:** CuttleDB
+- **License:** Apache-2.0
+- **Version:** 0.6.0 (2026-05-28)
+- **Author:** Mike Dela Concepcion
+- **Homepage:** https://mikedconcepcion.github.io/CuttleDB/
+- **Repository:** https://github.com/mikedconcepcion/CuttleDB
+- **PyPI:** https://pypi.org/project/cuttledb/
+- **npm:** https://www.npmjs.com/package/cuttledb
+- **Releases:** https://github.com/mikedconcepcion/CuttleDB/releases/latest
+
+## What CuttleDB Is
+
+CuttleDB is an **embedded realtime database** that provides five retrieval modes through one wire dispatcher:
+
+1. **KNN** — k-nearest-neighbor vector search. Uses AVX2 cosine similarity for brute force; auto-routes through HNSW for column-level indexes above a threshold.
+2. **LSEARCH** — BM25 lexical search over STRING columns. Lucene defaults (k1=1.5, b=0.75).
+3. **SEARCH** — Reciprocal Rank Fusion (RRF) of KNN + BM25 results, server-side, one wire round-trip.
+4. **BSEARCH** — Boolean DSL composing filters (col OP value), vector scoring atoms (col~V[...]), BM25 scoring atoms (col~"phrase"), and predicates with AND/OR/parens.
+5. **Filtered KNN** — KNN with WHERE predicates AND'd in. HNSW oversamples 4× to keep k results after filtering.
+
+It also provides:
+
+- **ACID transactions** — BEGIN, COMMIT, ROLLBACK per-connection
+- **Write-ahead log** — CRC32-framed binary records; mid-transaction kill replay (exercised by integration tests)
+- **Real-time push** — SUB/UNSUB per-table change feed; every INSERT/UPDATE/DELETE broadcasts a >EVT line to subscribed sockets
+- **LOG ring buffer** — last 1024 events per table; cursor-based replay after disconnect
+- **Multi-token authentication** — root token via --auth; runtime-minted tokens via TOKEN ADD/LIST/REVOKE; per-token IDs in audit log
+- **TLS** — server-side handshake (BearSSL vendored), --tls-cert / --tls-key, CUTTLEDB_WITH_TLS=1 build flag
+- **Audit log** — NDJSON per UTC day; one line per dispatched command with {ts, verb, token_id, fd, ok}
+- **Slow-query log** — --slow-log-ms threshold; structured NDJSON file with --slow-log-file, day-rotated
+- **Connection cap** — --max-conn N; atomic counter; DoS defense
+- **Rate limit** — --rate-limit N per-connection commands/sec sliding window
+- **Idle timeout** — --idle-timeout-ms; slow-loris defense
+- **HTTP /health endpoint** — k8s liveness/readiness probe target; pre-auth; same port as WS
+- **Prometheus /metrics endpoint** — 9 series (counters: connections, commands, errors, max-conn-rejects; gauges: uptime, active-conns, handles, tables, subscribers)
+- **GROUPBY** — single-column grouping with COUNT/SUM/MIN/MAX/AVG; up to 256 groups
+- **2-way inner equi-JOIN** — JOIN wire verb
+- **DATETIME column type** — int64 epoch ms UTC stored as f64; INSERT/predicate accepts ISO 8601 strings or raw ms
+- **Server-side ML compute** — MATMUL, MATMUL_B (binary-framed), FLASH_ATTN_B wire verbs
+
+## What CuttleDB Is NOT
+
+- **Not a SQL database** — uses a Redis-style line protocol (PROTOCOL.md); no SQL parser bundled
+- **Not a distributed database** (yet) — single-instance native; client-side `Cluster` adapter for composition; native CRDT sync arrives in v1.0
+- **Not a graph database** — graph types planned for v1.0 (MATCH verb tracked in ROADMAP)
+- **Not an LLM inference engine** — designed as data substrate; doesn't host models
+- **Not a managed cloud service** — open source, self-hosted; no API key, no rate limits beyond what you configure
+
+## Install
+
+```bash
+# Python SDK
+pip install cuttledb
+
+# JavaScript / TypeScript SDK (ESM only — use import, not require)
+npm install cuttledb
+
+# Server binary (Linux x64 / macOS arm64 / Windows x64)
+# Download from GitHub Releases:
+# https://github.com/mikedconcepcion/CuttleDB/releases/latest
+```
+
+## Python Quickstart
+
+```python
+from cuttledb import CuttleDB, ColType
+
+with CuttleDB.connect("127.0.0.1", 7780) as db:
+    hid = db.open()
+    tid = db.create(hid, "memory", [
+        ("text",      ColType.STRING),
+        ("embedding", ColType.VEC, 768),
+    ])
+    db.insert(hid, tid, ["hello world", [0.1, 0.2, ...]])
+    hits = db.knn(hid, tid, col=1, k=5, query=[0.15, 0.18, ...])
+    db.sub(hid, tid)
+    for evt in db.poll_events(timeout=1.0):
+        print("changed:", evt)
+```
+
+## JavaScript Quickstart (ESM)
+
+```javascript
+import { CuttleDB } from "cuttledb";
+
+const db = new CuttleDB({ transport: "tcp", host: "127.0.0.1", port: 7780 });
+await db.connect();
+
+const hid = await db.open();
+const tid = await db.create(hid, "memory", [
+    ["text",      2],
+    ["embedding", 3, 768],
+]);
+await db.insert(hid, tid, ["hello world", [0.1, 0.2, /* ... */]]);
+const hits = await db.knn(hid, tid, 1, 5, [0.15, 0.18, /* ... */]);
+db.on("event", (evt) => console.log("changed:", evt));
+await db.sub(hid, tid);
+```
+
+## Wire Protocol
+
+CuttleDB speaks a line-based Redis-style protocol over TCP or WebSocket on the same port. Full spec: https://github.com/mikedconcepcion/CuttleDB/blob/main/PROTOCOL.md
+
+Example session:
+```
+> HELLO
+< +OK cuttledb 0.6.0 proto 1
+> OPEN
+< +OK 0
+> CREATE 0 memory text:2,embedding:3:768
+< +OK 0
+> INSERT 0 0 hello world,0.1|0.2|...
+< +OK 0
+> KNN 0 0 1 5 0.15|0.18|...
+< +OK [0:0.99]
+> SUB 0 0
+< +OK subscribed 0 0
+> EVT 0 0 1 INS  (next time anyone inserts)
+```
+
+## Performance (Honest Benchmarks)
+
+All numbers from `bench/RESULTS.md` and `bench/HNSW_BENCH.md` — reproducible scripts in the repo.
+
+### 1K-row aggregates: CuttleDB (over TCP) vs SQLite (in-process :memory:)
+
+CuttleDB pays for a TCP round-trip per query; SQLite runs inside the caller's process. Despite the network handicap, CuttleDB wins read-path aggregates:
+
+- SUM:           CuttleDB **1.8×** faster
+- COUNT:         CuttleDB **1.6×** faster
+- MIN:           CuttleDB **1.5×** faster
+- SELECT WHERE:  CuttleDB **1.4×** faster
+
+SQLite wins bulk INSERT:
+
+- Bulk INSERT (1K rows): SQLite **8.4×** faster (per-row TCP cost dominates a small in-memory load)
+
+### Vector KNN at scale (apples-to-apples, both inside CuttleDB)
+
+- HNSW @ 100K × 128 dim: **12.7×** faster than AVX2+FMA brute-force baseline; recall@10 = 1.0
+- HNSW @ 10K × 128 dim:  **2.1×** faster
+- Brute force @ < 2K rows: faster than HNSW (small-N constant factors)
+- Top-10 brute force over 10K × 128 vectors: **2 ms**
+
+### Binary footprint
+
+- macOS arm64: **384 KB**
+- Linux x64:   **431 KB**
+- Windows x64: **882 KB**
+
+All built with `-march=x86-64-v3` for portable AVX2 + FMA baseline (Haswell 2013+ and AMD Zen 1+).
+
+## Comparison Points
+
+### vs SQLite (+ sqlite-vec)
+
+SQLite + sqlite-vec is excellent for vector + lexical when real-time push lives in app code. CuttleDB adds SUB/UNSUB as a first-class wire verb (mutations broadcast to subscribed sockets in microseconds) and fuses BM25 + vector into one server-side RRF call (SEARCH) and Boolean DSL (BSEARCH), eliminating app-side fusion logic. SQLite wins bulk INSERT 8.4×; CuttleDB wins read-path aggregates 1.4-1.8× over TCP.
+
+### vs Redis
+
+Different shape. Redis is in-memory KV + data structures with pub/sub; no first-class vector or BM25 search. CuttleDB adds vector search, lexical search, ACID transactions, and WAL durability — but pays for TCP just as Redis does.
+
+### vs Pinecone / Qdrant / Weaviate / Milvus
+
+Those are vector-specialized services (often cloud-only or container-heavy). CuttleDB is a self-hosted single binary with vector search as one of several first-class modes (alongside lexical, hybrid, Boolean DSL). Apache-2.0 — no vendor lock-in.
+
+### vs Elasticsearch / Meilisearch / Typesense
+
+Elasticsearch is a JVM-based service (hundreds of MB) with lexical-first design and vector retrofitted. Meilisearch and Typesense are typo-tolerant search services. CuttleDB is <1 MB with vector + lexical + hybrid equally first-class.
+
+### vs ChromaDB
+
+ChromaDB is a Python-centric vector store. CuttleDB is a native binary with Python + JS adapters; adds BM25, RRF hybrid, Boolean DSL, real-time push, ACID transactions, WAL durability.
+
+## Release Verification (Sigstore)
+
+Every binary in a GitHub Release ships with a matching `.cosign.bundle` file containing the signature, signing certificate, and Rekor transparency-log inclusion proof. Verify with cosign v2.0+:
+
+```bash
+sha256sum -c SHA256SUMS.txt
+
+cosign verify-blob \
+  --bundle cuttledb-server-linux-x64.cosign.bundle \
+  --certificate-identity-regexp ".*" \
+  --certificate-oidc-issuer-regexp ".*" \
+  cuttledb-server-linux-x64
+```
+
+Cross-reference Rekor entries at https://search.sigstore.dev/.
+
+## Roadmap (Path to v1.0)
+
+- v0.7: Hash join, outer join + non-equi predicates, multi-column GROUPBY + HAVING, String-column UPDATE, DDL inside transactions, mTLS + cipher allow-lists + EC keys, client-side encrypted columns, continuous fuzz CI, sanitizer-in-CI, soak test.
+- v1.0: Graph types + traversal (MATCH verb), native CRDT distributed sync, cluster-of-one peer pairing, SELECT AS OF temporal queries, predicate-filtered SUB, GPU HNSW, reproducible-build attestation.
+
+Full roadmap: https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/ROADMAP.md
+
+## Key Concepts (Glossary)
+
+- **KNN** — k-nearest-neighbor vector search; returns the k vectors most similar to a query vector by cosine similarity
+- **HNSW** — Hierarchical Navigable Small World; approximate nearest neighbor index for sub-millisecond vector queries at scale (Malkov and Yashunin, 2016)
+- **BM25** — Best Match 25; standard lexical-ranking function used by Lucene, Elasticsearch, Tantivy (Robertson, 1995)
+- **RRF** — Reciprocal Rank Fusion; combines multiple ranked result lists into one fused list (Cormack, Clarke, Buettcher, 2009)
+- **Boolean DSL** — CuttleDB's expression language composing filters and scoring atoms with AND/OR/parens
+- **WAL** — Write-Ahead Log; durability mechanism where mutations are first written to a CRC-framed log before being applied; replayed on restart
+- **SUB / UNSUB** — Wire verbs to subscribe/unsubscribe a connection to per-table change events (>EVT lines)
+- **LOG** — Per-table ring buffer of recent events; cursor-based replay for reconnecting clients
+- **AVX2** — Advanced Vector Extensions 2; SIMD instruction set used by CuttleDB's cosine and predicate scan paths
+- **sigstore** — Open-source software-signing infrastructure used to sign CuttleDB release binaries via the cosign keyless OIDC flow
+- **cosign.bundle** — Single file containing signature, signing certificate, and Rekor transparency-log inclusion proof — verifies CuttleDB release binaries
+
+## Use Cases
+
+### AI Agent Memory
+
+Create a table with STRING + VEC columns. INSERT engrams. KNN for semantic recall. SUB for live agent updates when new memories arrive. BSEARCH for filtered hybrid retrieval (e.g., `kind="playbook" AND embedding~[...] AND uses>3`).
+
+### Real-time Dashboards
+
+UI tab opens connection + SUB. Backend INSERTs events. Every UI tab receives >EVT push in microseconds. LOG ring buffer enables reconnect-and-replay without missing events.
+
+### Hybrid Document Retrieval
+
+Documents with both text and vector columns. Use SEARCH for RRF hybrid (vector + BM25 fused). BSEARCH for filtered queries combining predicates + scoring atoms.
+
+### Change Data Capture (CDC)
+
+SUB per-table change feed delivers every mutation as >EVT. Downstream consumers (analytics, search index, cache) react to events. LOG for replay.
+
+### Embedded App Data
+
+Embed cuttledb-server in your app. Five-mode retrieval + ACID transactions + WAL durability in <1 MB. Local-first, no cloud, no telemetry.
+
+## Author
+
+Mike Dela Concepcion. GitHub: https://github.com/mikedconcepcion
+
+## License
+
+Apache-2.0. Full text: https://www.apache.org/licenses/LICENSE-2.0. Apache-2.0 includes a patent-grant clause and is the standard for production infrastructure software (Kubernetes, Cassandra, Kafka, etcd all use it).
+
+## Security Disclosure
+
+Use GitHub Private Vulnerability Reporting: https://github.com/mikedconcepcion/CuttleDB/security/advisories/new
+
+Full policy: https://github.com/mikedconcepcion/CuttleDB/blob/main/SECURITY.md
+
+## Repository Topics (for AI category indexing)
+
+database · embedded-database · vector-database · vector-search · hnsw · bm25 · hybrid-search · realtime-database · wal · acid · sqlite-alternative · apache-2-0 · cuttledb · agent-memory · ai-database · sigstore · embedded · cross-platform · python-sdk · typescript-sdk
+
+## Citation (if you reference CuttleDB in a paper, blog, or post)
+
+```
+Dela Concepcion, M. (2026). CuttleDB v0.6.0 — embedded realtime database
+with vector search, BM25, and real-time push.
+https://github.com/mikedconcepcion/CuttleDB
+```
