@@ -13,333 +13,317 @@
 <link rel="canonical" href="https://mikedconcepcion.github.io/CuttleDB">
 <style>
   :root {
-    --bg:           #0a0a0a;
-    --surface:      #111111;
-    --surface-2:    #161616;
-    --border:       #232323;
-    --border-soft:  #1a1a1a;
-    --text:         #e8e8e8;
-    --text-soft:    #c0c0c0;
-    --text-muted:   #707070;
-    --accent:       #ff7849;
-    --accent-soft:  #ff784920;
-    --accent-line:  #ff784940;
-    --code-bg:      #060606;
-    --code-green:   #adff7a;
-    --code-blue:    #6fb8ff;
-    --code-purple:  #d49bff;
-    --code-comment: #5a5a5a;
-    --max-content:  920px;
+    --bg: #0a0a0a; --surface: #111111; --surface-2: #161616;
+    --border: #232323; --border-soft: #1a1a1a;
+    --text: #e8e8e8; --text-soft: #c0c0c0; --text-muted: #707070;
+    --accent: #ff7849; --accent-soft: #ff784920; --accent-line: #ff784940;
+    --accent-2: #5eead4;
+    --code-bg: #060606; --code-green: #adff7a; --code-blue: #6fb8ff;
+    --code-purple: #d49bff; --code-comment: #5a5a5a; --code-string: #a4d68d;
+    --wire-in: #6fb8ff; --wire-out: #adff7a; --wire-evt: #ff7849;
+    --max-content: 980px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body {
-    background: var(--bg);
-    color: var(--text);
+    background: var(--bg); color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    line-height: 1.55;
-    font-size: 16px;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.55; font-size: 16px;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   }
   a {
-    color: var(--accent);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-    transition: border-color 0.15s;
+    color: var(--accent); text-decoration: none;
+    border-bottom: 1px solid transparent; transition: border-color 0.15s;
   }
   a:hover { border-bottom-color: var(--accent); }
   code, pre {
     font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.9em;
+    font-size: 0.88em;
   }
   pre {
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1rem 1.25rem;
-    overflow-x: auto;
-    line-height: 1.5;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 1rem 1.25rem;
+    overflow-x: auto; line-height: 1.55;
   }
   pre code { color: var(--text-soft); }
-  .kw   { color: var(--code-purple); }
-  .str  { color: var(--code-green); }
-  .num  { color: var(--code-blue); }
-  .com  { color: var(--code-comment); font-style: italic; }
-  .fn   { color: var(--code-blue); }
-  .accent { color: var(--accent); }
-  p code, li code {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 0.1em 0.4em;
-    color: var(--accent);
-    font-size: 0.88em;
+  .kw { color: var(--code-purple); } .str { color: var(--code-string); }
+  .num { color: var(--code-blue); } .com { color: var(--code-comment); font-style: italic; }
+  .fn { color: var(--code-blue); } .accent { color: var(--accent); }
+  p code, li code, td code {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; padding: 0.1em 0.4em;
+    color: var(--accent); font-size: 0.88em;
   }
   nav {
     border-bottom: 1px solid var(--border-soft);
-    padding: 1rem 1.5rem;
-    position: sticky;
-    top: 0;
+    padding: 1rem 1.5rem; position: sticky; top: 0;
     background: rgba(10, 10, 10, 0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     z-index: 10;
   }
   nav .wrap {
-    max-width: var(--max-content);
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
+    max-width: var(--max-content); margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 2rem;
   }
   nav .brand {
-    font-weight: 700;
-    font-size: 1.05rem;
-    color: var(--text);
-    border: none;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    font-weight: 700; font-size: 1.05rem; color: var(--text);
+    border: none; display: flex; align-items: center; gap: 0.5rem;
   }
   nav .brand .dot {
-    width: 0.6em; height: 0.6em;
-    background: var(--accent);
-    border-radius: 50%;
-    display: inline-block;
+    width: 0.6em; height: 0.6em; background: var(--accent);
+    border-radius: 50%; display: inline-block;
   }
   nav ul {
-    list-style: none;
-    display: flex;
-    gap: 1.5rem;
-    align-items: center;
-    font-size: 0.92rem;
+    list-style: none; display: flex; gap: 1.4rem;
+    align-items: center; font-size: 0.92rem;
   }
   nav ul a { color: var(--text-soft); border: none; }
   nav ul a:hover { color: var(--accent); }
   nav .gh {
-    border: 1px solid var(--border);
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    transition: border-color 0.15s, color 0.15s;
+    border: 1px solid var(--border); padding: 0.4rem 0.8rem;
+    border-radius: 6px; transition: border-color 0.15s, color 0.15s;
   }
   nav .gh:hover { border-color: var(--accent); }
   section { padding: 4rem 1.5rem; }
   section.tight { padding: 2rem 1.5rem; }
   .wrap { max-width: var(--max-content); margin: 0 auto; }
-  .hero {
-    padding-top: 5rem;
-    padding-bottom: 3rem;
-    position: relative;
-    overflow: hidden;
-  }
+  .hero { padding-top: 5rem; padding-bottom: 3rem; position: relative; overflow: hidden; }
   .hero::before {
-    content: '';
-    position: absolute;
-    top: -200px; left: 50%;
-    width: 600px; height: 600px;
+    content: ''; position: absolute; top: -200px; left: 50%;
+    width: 700px; height: 700px;
     background: radial-gradient(circle, var(--accent-soft) 0%, transparent 70%);
-    transform: translateX(-50%);
-    pointer-events: none;
-    z-index: -1;
+    transform: translateX(-50%); pointer-events: none; z-index: -1;
   }
   .hero .pill {
-    display: inline-block;
-    background: var(--surface);
-    border: 1px solid var(--accent-line);
-    color: var(--accent);
-    padding: 0.3rem 0.8rem;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    display: inline-block; background: var(--surface);
+    border: 1px solid var(--accent-line); color: var(--accent);
+    padding: 0.3rem 0.8rem; border-radius: 999px;
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em;
     margin-bottom: 1.25rem;
   }
   .hero h1 {
     font-size: clamp(2.4rem, 6vw, 3.5rem);
-    line-height: 1.1;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    letter-spacing: -0.02em;
+    line-height: 1.1; font-weight: 700;
+    margin-bottom: 1rem; letter-spacing: -0.02em;
   }
   .hero h1 .accent { color: var(--accent); }
   .hero .lede {
     font-size: clamp(1.1rem, 2vw, 1.3rem);
-    color: var(--text-soft);
-    max-width: 720px;
-    margin-bottom: 0.75rem;
+    color: var(--text-soft); max-width: 720px; margin-bottom: 0.75rem;
   }
   .hero .sub {
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    max-width: 720px;
-    margin-bottom: 2rem;
+    color: var(--text-muted); font-size: 0.95rem;
+    max-width: 720px; margin-bottom: 2rem;
   }
   .hero .ctas { display: flex; gap: 0.75rem; flex-wrap: wrap; }
   .btn {
-    display: inline-block;
-    padding: 0.7rem 1.3rem;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    border: 1px solid var(--border);
-    color: var(--text);
+    display: inline-block; padding: 0.7rem 1.3rem;
+    border-radius: 6px; font-weight: 600; font-size: 0.95rem;
+    border: 1px solid var(--border); color: var(--text);
     transition: all 0.15s;
   }
   .btn:hover { border-color: var(--accent); color: var(--accent); }
   .btn.primary {
-    background: var(--accent);
-    color: #000;
-    border-color: var(--accent);
+    background: var(--accent); color: #000; border-color: var(--accent);
   }
-  .btn.primary:hover {
-    background: #ffa07a;
-    border-color: #ffa07a;
-    color: #000;
-  }
+  .btn.primary:hover { background: #ffa07a; border-color: #ffa07a; color: #000; }
   .install {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem; margin-top: 1rem;
   }
   .install .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1.25rem 1.4rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.25rem 1.4rem;
     transition: border-color 0.15s;
   }
   .install .card:hover { border-color: var(--accent-line); }
   .install .card .label {
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-    margin-bottom: 0.6rem;
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-muted); margin-bottom: 0.6rem;
   }
   .install .card pre {
-    background: var(--code-bg);
-    padding: 0.6rem 0.8rem;
-    margin: 0;
-    font-size: 0.85rem;
-    border: 1px solid var(--border-soft);
+    background: var(--code-bg); padding: 0.6rem 0.8rem; margin: 0;
+    font-size: 0.85rem; border: 1px solid var(--border-soft);
   }
   h2 {
-    font-size: 1.6rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    letter-spacing: -0.01em;
+    font-size: 1.7rem; font-weight: 700;
+    margin-bottom: 0.5rem; letter-spacing: -0.01em;
   }
   h2 .accent { color: var(--accent); }
   .section-sub {
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    margin-bottom: 2rem;
+    color: var(--text-muted); font-size: 0.95rem;
+    margin-bottom: 2rem; max-width: 780px;
   }
+
+  /* ── Showcase ─────────────────────────────────────────────────── */
+  .showcase-block {
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--surface); margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .showcase-header {
+    padding: 1.2rem 1.6rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .showcase-header .tag {
+    display: inline-block; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--accent); margin-bottom: 0.4rem;
+    font-weight: 600;
+  }
+  .showcase-header h3 {
+    font-size: 1.2rem; margin: 0 0 0.3rem 0; color: var(--text);
+    font-weight: 600;
+  }
+  .showcase-header p {
+    color: var(--text-muted); font-size: 0.9rem; margin: 0;
+  }
+  .showcase-body {
+    display: grid; grid-template-columns: 1.1fr 1fr;
+    gap: 0; align-items: stretch;
+  }
+  .showcase-code, .showcase-wire {
+    padding: 1.4rem; overflow-x: auto;
+  }
+  .showcase-code {
+    border-right: 1px solid var(--border);
+    background: var(--code-bg);
+  }
+  .showcase-wire { background: var(--bg); }
+  .panel-label {
+    font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--text-muted);
+    margin-bottom: 0.6rem; font-weight: 600;
+  }
+  .showcase-code pre, .showcase-wire pre {
+    background: transparent; border: none;
+    padding: 0; margin: 0; font-size: 0.82rem; line-height: 1.6;
+  }
+  .wire-line { display: block; padding: 0.05rem 0; }
+  .wire-in  { color: var(--wire-in); }      /* > client → server */
+  .wire-out { color: var(--wire-out); }     /* < server response */
+  .wire-evt { color: var(--wire-evt); }     /* >EVT push */
+  .wire-line .arrow { color: var(--text-muted); margin-right: 0.5rem; }
+  @media (max-width: 720px) {
+    .showcase-body { grid-template-columns: 1fr; }
+    .showcase-code { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  /* ── Features grid ────────────────────────────────────────────── */
   .features {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1rem;
   }
   .features .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1.5rem 1.4rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.5rem 1.4rem;
     transition: border-color 0.15s, transform 0.15s;
   }
-  .features .card:hover {
-    border-color: var(--accent-line);
-    transform: translateY(-2px);
-  }
+  .features .card:hover { border-color: var(--accent-line); transform: translateY(-2px); }
   .features .card .icon {
     width: 36px; height: 36px;
-    background: var(--accent-soft);
-    color: var(--accent);
+    background: var(--accent-soft); color: var(--accent);
     border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    margin-bottom: 0.9rem;
-    font-size: 1.05rem;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; margin-bottom: 0.9rem; font-size: 1.05rem;
   }
-  .features .card h3 {
-    font-size: 1.05rem;
-    margin-bottom: 0.5rem;
-    color: var(--text);
-  }
-  .features .card p {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    line-height: 1.55;
-  }
+  .features .card h3 { font-size: 1.05rem; margin-bottom: 0.5rem; color: var(--text); }
+  .features .card p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.55; }
+
+  /* ── Architecture diagram ─────────────────────────────────────── */
   .arch {
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1.5rem;
-    overflow-x: auto;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.5rem; overflow-x: auto;
     font-family: ui-monospace, 'SF Mono', monospace;
-    font-size: 0.78rem;
-    line-height: 1.6;
-    color: var(--text-soft);
-    white-space: pre;
+    font-size: 0.78rem; line-height: 1.65;
+    color: var(--text-soft); white-space: pre;
   }
   .arch .accent { color: var(--accent); }
   .arch .label { color: var(--code-blue); }
   .arch .com { color: var(--code-comment); }
-  .stats {
+
+  /* ── Benchmark bars ───────────────────────────────────────────── */
+  .bench-section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.5rem 1.6rem; margin-bottom: 1.2rem;
+  }
+  .bench-section h3 {
+    font-size: 1.05rem; margin-bottom: 0.4rem; color: var(--text);
+  }
+  .bench-section .bench-honest {
+    color: var(--text-muted); font-size: 0.9rem;
+    margin-bottom: 1.2rem; font-style: italic;
+  }
+  .bench-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: 220px 1fr 110px;
+    gap: 1rem; align-items: center;
+    padding: 0.4rem 0; border-top: 1px dashed var(--border-soft);
+    font-size: 0.88rem;
+  }
+  .bench-row:first-of-type { border-top: none; }
+  .bench-row .bench-label { color: var(--text-soft); }
+  .bench-row .bench-num {
+    color: var(--accent); font-weight: 600;
+    font-family: ui-monospace, monospace; font-size: 0.85rem;
+    text-align: right;
+  }
+  .bench-row.loss .bench-num { color: var(--code-blue); }
+  .bench-row .bar {
+    height: 8px; background: var(--surface-2);
+    border-radius: 4px; overflow: hidden; position: relative;
+  }
+  .bench-row .bar .fill {
+    height: 100%; border-radius: 4px;
+    background: var(--accent);
+    transition: width 0.6s ease-out;
+  }
+  .bench-row.loss .bar .fill { background: var(--code-blue); }
+  @media (max-width: 600px) {
+    .bench-row { grid-template-columns: 1fr; gap: 0.3rem; }
+    .bench-row .bench-num { text-align: left; }
+  }
+
+  /* ── Stats ────────────────────────────────────────────────────── */
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
   }
   .stats .stat {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1.25rem;
-    text-align: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.25rem; text-align: center;
   }
   .stats .stat .num {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: var(--accent);
-    display: block;
-    line-height: 1.2;
+    font-size: 1.8rem; font-weight: 700;
+    color: var(--accent); display: block; line-height: 1.2;
   }
   .stats .stat .label {
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    margin-top: 0.3rem;
-    display: block;
+    color: var(--text-muted); font-size: 0.85rem;
+    margin-top: 0.3rem; display: block;
   }
+
+  /* ── Verify ───────────────────────────────────────────────────── */
   .verify {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.5rem;
   }
+
   footer {
     border-top: 1px solid var(--border-soft);
-    padding: 2.5rem 1.5rem;
-    color: var(--text-muted);
+    padding: 2.5rem 1.5rem; color: var(--text-muted);
     font-size: 0.88rem;
   }
   footer .wrap {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 1rem;
+    display: flex; flex-wrap: wrap;
+    justify-content: space-between; gap: 1rem;
   }
   footer ul { list-style: none; display: flex; gap: 1.5rem; }
   footer ul a { color: var(--text-muted); border: none; }
   footer ul a:hover { color: var(--accent); }
   @media (max-width: 720px) {
-    nav ul { gap: 1rem; font-size: 0.85rem; }
-    nav ul li:nth-child(2) { display: none; }
+    nav ul { gap: 0.9rem; font-size: 0.82rem; }
+    nav ul li:nth-child(2), nav ul li:nth-child(3) { display: none; }
     section { padding: 3rem 1.25rem; }
     .hero { padding-top: 3rem; }
   }
@@ -352,8 +336,8 @@
     <a href="#" class="brand"><span class="dot"></span> CuttleDB</a>
     <ul>
       <li><a href="#install">Install</a></li>
-      <li><a href="#features">Features</a></li>
-      <li><a href="#quickstart">Quickstart</a></li>
+      <li><a href="#showcase">Showcase</a></li>
+      <li><a href="#benchmarks">Benchmarks</a></li>
       <li><a href="#verify">Verify</a></li>
       <li><a class="gh" href="https://github.com/mikedconcepcion/CuttleDB">GitHub →</a></li>
     </ul>
@@ -400,6 +384,151 @@
   </div>
 </section>
 
+<section id="showcase">
+  <div class="wrap">
+    <h2>What it looks like <span class="accent">→</span></h2>
+    <p class="section-sub">
+      Three real use cases. Each shows the SDK code on the left and the actual
+      wire protocol on the right — the same lines you'd see in a TCP dump
+      against <code>cuttledb-server</code>.
+    </p>
+
+    <!-- Showcase 1: Agent Memory -->
+    <div class="showcase-block">
+      <div class="showcase-header">
+        <span class="tag">use case 1 · ai agent memory</span>
+        <h3>Store, recall by semantic similarity, watch for new memories</h3>
+        <p>Mixed text + 768-dim embedding column. KNN over the vector axis. Subscribe to get push events when new memories arrive.</p>
+      </div>
+      <div class="showcase-body">
+        <div class="showcase-code">
+          <div class="panel-label">Python SDK</div>
+<pre><code><span class="kw">from</span> cuttledb <span class="kw">import</span> CuttleDB, ColType
+
+<span class="kw">with</span> CuttleDB.<span class="fn">connect</span>(<span class="str">"127.0.0.1"</span>, <span class="num">7780</span>) <span class="kw">as</span> db:
+    hid = db.<span class="fn">open</span>()
+    tid = db.<span class="fn">create</span>(hid, <span class="str">"memory"</span>, [
+        (<span class="str">"text"</span>,      ColType.STRING),
+        (<span class="str">"embedding"</span>, ColType.VEC, <span class="num">768</span>),
+    ])
+
+    <span class="com"># Store engrams</span>
+    db.<span class="fn">insert</span>(hid, tid, [<span class="str">"recipe: tomato risotto"</span>, [<span class="num">0.31</span>, ...]])
+    db.<span class="fn">insert</span>(hid, tid, [<span class="str">"recipe: chicken salad"</span>,  [<span class="num">0.28</span>, ...]])
+    db.<span class="fn">insert</span>(hid, tid, [<span class="str">"meeting note: q4 plan"</span>, [<span class="num">-0.12</span>, ...]])
+
+    <span class="com"># Semantic recall — AVX2 cosine + partial sort</span>
+    hits = db.<span class="fn">knn</span>(hid, tid, col=<span class="num">1</span>, k=<span class="num">3</span>,
+                   query=[<span class="num">0.30</span>, ...])
+    <span class="com"># → [(0, 0.97), (1, 0.94), (2, 0.61)]</span>
+
+    <span class="com"># Watch the table for new memories</span>
+    db.<span class="fn">sub</span>(hid, tid)
+    <span class="kw">for</span> evt <span class="kw">in</span> db.<span class="fn">stream_events</span>():
+        <span class="fn">print</span>(<span class="str">"new memory:"</span>, evt.row_id, evt.op)</code></pre>
+        </div>
+        <div class="showcase-wire">
+          <div class="panel-label">Wire protocol trace</div>
+<pre><code><span class="wire-line wire-in"><span class="arrow">&gt;</span>OPEN</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK 0</span>
+<span class="wire-line wire-in"><span class="arrow">&gt;</span>CREATE 0 memory text:2,embedding:3:768</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK 0</span>
+<span class="wire-line wire-in"><span class="arrow">&gt;</span>INSERT 0 0 recipe: tomato risotto,0.31|...</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK 0</span>
+<span class="wire-line wire-in"><span class="arrow">&gt;</span>INSERT 0 0 recipe: chicken salad,0.28|...</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK 1</span>
+<span class="wire-line wire-in"><span class="arrow">&gt;</span>INSERT 0 0 meeting note: q4 plan,-0.12|...</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK 2</span>
+<span class="wire-line wire-in"><span class="arrow">&gt;</span>KNN 0 0 1 3 0.30|...</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK [0:0.97;1:0.94;2:0.61]</span>
+<span class="wire-line wire-in"><span class="arrow">&gt;</span>SUB 0 0</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK subscribed 0 0</span>
+<span class="com"># next time anyone inserts:</span>
+<span class="wire-line wire-evt"><span class="arrow">»</span>EVT 0 0 3 INS</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Showcase 2: Real-time UI -->
+    <div class="showcase-block">
+      <div class="showcase-header">
+        <span class="tag">use case 2 · real-time ui</span>
+        <h3>One backend writes, every subscriber gets pushed in microseconds</h3>
+        <p>UI tab opens a connection + subscribes. Backend pushes events into the same table. Every UI tab updates instantly, no polling. <code>LOG</code> ring buffer lets a reconnecting tab replay missed events.</p>
+      </div>
+      <div class="showcase-body">
+        <div class="showcase-code">
+          <div class="panel-label">Browser (WebSocket)</div>
+<pre><code><span class="kw">import</span> { CuttleDB } <span class="kw">from</span> <span class="str">"cuttledb"</span>;
+
+<span class="kw">const</span> db = <span class="kw">new</span> CuttleDB({
+    transport: <span class="str">"ws"</span>,
+    url: <span class="str">"ws://localhost:7780"</span>
+});
+<span class="kw">await</span> db.<span class="fn">connect</span>();
+
+<span class="kw">const</span> hid = <span class="kw">await</span> db.<span class="fn">open</span>();
+<span class="kw">const</span> tid = <span class="kw">await</span> db.<span class="fn">create</span>(hid, <span class="str">"events"</span>, [
+    [<span class="str">"user"</span>, <span class="num">2</span>],
+    [<span class="str">"kind"</span>, <span class="num">2</span>],
+    [<span class="str">"ts"</span>,   <span class="num">4</span>],   <span class="com">// DATETIME</span>
+]);
+
+<span class="com">// Subscribe — receives every INS/UPD/DEL</span>
+db.<span class="fn">on</span>(<span class="str">"event"</span>, (evt) =&gt; {
+    appendToDashboard(evt);
+});
+<span class="kw">await</span> db.<span class="fn">sub</span>(hid, tid);</code></pre>
+        </div>
+        <div class="showcase-wire">
+          <div class="panel-label">Wire — UI tab side</div>
+<pre><code><span class="wire-line wire-in"><span class="arrow">&gt;</span>SUB 0 0</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK subscribed 0 0</span>
+<span class="com"># Backend writes from anywhere:</span>
+<span class="wire-line wire-evt"><span class="arrow">»</span>EVT 0 0 47 INS</span><span class="wire-line wire-evt"><span class="arrow">»</span>EVT 0 0 48 INS</span><span class="wire-line wire-evt"><span class="arrow">»</span>EVT 0 0 49 INS</span>
+<span class="com"># Tab disconnects, reconnects, catches up:</span>
+<span class="wire-line wire-in"><span class="arrow">&gt;</span>LOG 0 0 47</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK 51 [ts:48:INS;ts:49:INS;ts:50:INS;ts:51:INS]</span>
+<span class="com"># Subscribed again, no events missed.</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Showcase 3: Hybrid Retrieval -->
+    <div class="showcase-block">
+      <div class="showcase-header">
+        <span class="tag">use case 3 · hybrid retrieval</span>
+        <h3>BM25 + vector + Boolean filters in one wire roundtrip</h3>
+        <p>RRF fuses lexical and vector rankings server-side. Boolean DSL composes filters, scoring atoms (<code>col~"phrase"</code>, <code>col~V[...]</code>), and predicates (<code>col&gt;5</code>) with AND/OR/parens.</p>
+      </div>
+      <div class="showcase-body">
+        <div class="showcase-code">
+          <div class="panel-label">Python SDK</div>
+<pre><code><span class="com"># Hybrid: vector + BM25 fused via Reciprocal Rank Fusion</span>
+hits = db.<span class="fn">search</span>(
+    hid, tid,
+    vec_col=<span class="num">1</span>, text_col=<span class="num">0</span>, k=<span class="num">5</span>,
+    vec=[<span class="num">0.12</span>, <span class="num">0.20</span>, ...],
+    query=<span class="str">"brown fox"</span>,
+)
+
+<span class="com"># Boolean DSL: filters + scoring atoms composed</span>
+<span class="com">#   (kind="playbook" OR kind="ref")</span>
+<span class="com">#       AND embedding ~ [0.1,0.2,...]</span>
+<span class="com">#       AND uses &gt; 3</span>
+hits = db.<span class="fn">bsearch</span>(hid, tid, <span class="num">5</span>,
+    <span class="str">'(2="playbook" OR 2="ref")'</span>
+    <span class="str">' AND 1~V[1.0|0.0|0.0|0.0]'</span>
+    <span class="str">' AND 3&gt;3'</span>
+)
+<span class="com"># Server combines: predicate filter → KNN candidates →</span>
+<span class="com">#  BM25 candidates → RRF fuse → top-k. One roundtrip.</span></code></pre>
+        </div>
+        <div class="showcase-wire">
+          <div class="panel-label">Wire — single roundtrip</div>
+<pre><code><span class="wire-line wire-in"><span class="arrow">&gt;</span>SEARCH 0 0 1 0 5 0.12|0.20|... ||| brown fox</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK [2:0.0328;0:0.0312;5:0.0163]</span>
+<span class="com"># Boolean DSL:</span>
+<span class="wire-line wire-in"><span class="arrow">&gt;</span>BSEARCH 0 0 5 (2="playbook" OR 2="ref") AND 1~V[1.0|0.0|0.0|0.0] AND 3&gt;3</span><span class="wire-line wire-out"><span class="arrow">&lt;</span>+OK [0:0.0328;2:0.0312]</span>
+<span class="com"># All five modes go through the same wire dispatcher:</span>
+<span class="com">#   KNN  ·  LSEARCH (BM25)  ·  SEARCH (RRF)</span>
+<span class="com">#   BSEARCH (Boolean)  ·  KNN ... WHERE</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="features">
   <div class="wrap">
     <h2>Why <span class="accent">CuttleDB</span>?</h2>
@@ -413,9 +542,9 @@
         <h3>Substrate-level speed</h3>
         <p>
           Column store with running aggregates. <code>COUNT</code> and
-          <code>SUM</code> are O(1). AVX2 SIMD predicate scans. Faster
-          than SQLite <code>:memory:</code> on read-path aggregates at
-          1K-row workloads despite TCP overhead.
+          <code>SUM</code> are O(1). AVX2 SIMD predicate scans. Wins
+          read-path aggregates over SQLite <code>:memory:</code> at
+          1K-row workloads despite paying for TCP round-trips.
         </p>
       </div>
       <div class="card">
@@ -423,7 +552,7 @@
         <h3>Vector search built-in</h3>
         <p>
           First-class <code>VEC</code> columns + HNSW index. Top-10 over
-          10K vectors in 2ms. At 100K × 128: <strong>12.7×</strong>
+          10K vectors in 2 ms. At 100K × 128: <strong>12.7×</strong>
           faster than the AVX2+FMA brute-force baseline. No Pinecone,
           no separate service.
         </p>
@@ -434,13 +563,13 @@
         <p>
           <code>SUB</code> / <code>UNSUB</code> per-table change feed.
           Every mutation triggers a <code>&gt;EVT</code> line on every
-          subscribed socket. <code>LOG</code> ring buffer for replay
-          after disconnect.
+          subscribed socket. <code>LOG</code> ring buffer (1024 events)
+          for replay after disconnect.
         </p>
       </div>
       <div class="card">
         <div class="icon">🔒</div>
-        <h3>Enterprise-tier security</h3>
+        <h3>Enterprise security tier</h3>
         <p>
           Multi-token auth, NDJSON audit log, TLS, <code>--max-conn</code>
           DoS cap, rate limit, structured slow-query log, HTTP
@@ -469,77 +598,127 @@
   </div>
 </section>
 
-<section id="quickstart">
-  <div class="wrap">
-    <h2>Quickstart <span class="accent">→</span> Python</h2>
-    <p class="section-sub">Open a handle, create a typed table, insert, query.</p>
-    <pre><code><span class="kw">from</span> cuttledb <span class="kw">import</span> CuttleDB, ColType
-
-<span class="kw">with</span> CuttleDB.<span class="fn">connect</span>(<span class="str">"127.0.0.1"</span>, <span class="num">7780</span>) <span class="kw">as</span> db:
-    hid = db.<span class="fn">open</span>()
-    tid = db.<span class="fn">create</span>(hid, <span class="str">"memory"</span>, [
-        (<span class="str">"text"</span>,      ColType.STRING),
-        (<span class="str">"embedding"</span>, ColType.VEC, <span class="num">768</span>),
-    ])
-
-    db.<span class="fn">insert</span>(hid, tid, [<span class="str">"hello world"</span>, [<span class="num">0.1</span>, <span class="num">0.2</span>, ...]])
-
-    <span class="com"># Vector KNN — AVX2 cosine + partial sort in one C call</span>
-    hits = db.<span class="fn">knn</span>(hid, tid, col=<span class="num">1</span>, k=<span class="num">5</span>, query=[<span class="num">0.15</span>, <span class="num">0.18</span>, ...])
-    <span class="kw">for</span> row_id, score <span class="kw">in</span> hits:
-        <span class="fn">print</span>(score, db.<span class="fn">get</span>(hid, tid, row_id))
-
-    <span class="com"># Real-time push — subscribe + drain events</span>
-    db.<span class="fn">sub</span>(hid, tid)
-    <span class="kw">for</span> evt <span class="kw">in</span> db.<span class="fn">poll_events</span>(timeout=<span class="num">1.0</span>):
-        <span class="fn">print</span>(<span class="str">"changed:"</span>, evt)</code></pre>
-  </div>
-</section>
-
-<section>
+<section id="architecture">
   <div class="wrap">
     <h2>Architecture</h2>
     <p class="section-sub">
       One binary, no daemon hierarchy, no embedded language interpreter.
+      Everything below is the same process, the same heap.
     </p>
-    <div class="arch">[client] <span class="com">── line protocol (TCP / WebSocket) ──</span> [<span class="accent">cuttledb-server</span>]
-                                                  │
-                  <span class="com">┌───────────────────────────────┼───────────────────────────────┐</span>
-                  ↓                               ↓                               ↓
-        <span class="label">column store</span>                 <span class="label">indexes</span>                    <span class="label">WAL + observability</span>
-        <span class="com">─────────────</span>                 <span class="com">───────</span>                    <span class="com">───────────────────</span>
-        INT  FLOAT  STRING            HNSW (vector)              CRC32 frames
-        VEC  DATETIME                 BM25 (lexical)             Replay on start
-        AVX2 SIMD scans               Boolean DSL                Audit NDJSON
-        O(1) COUNT + SUM              RRF hybrid                 Slow-query log
-                                                                 Prometheus /metrics</div>
+    <div class="arch">[client] <span class="com">── line protocol (TCP / WebSocket, same port) ──</span>
+                                  │
+                                  ↓
+                         [<span class="accent">cuttledb-server</span>]
+                                  │
+   <span class="com">┌──────────────────────────────┼──────────────────────────────┐</span>
+   ↓                              ↓                              ↓
+<span class="label">wire dispatcher</span>              <span class="label">storage engine</span>              <span class="label">observability</span>
+<span class="com">───────────────</span>              <span class="com">──────────────</span>              <span class="com">─────────────</span>
+KNN  LSEARCH  SEARCH         column store                Audit log (NDJSON)
+BSEARCH  KNN ... WHERE       (INT, FLOAT, STRING,        Slow-query log (NDJSON)
+INSERT  GET  UPDATE          VEC, DATETIME)              Prometheus /metrics
+DELETE  COUNT  SUM           AVX2 SIMD scans             HTTP /health
+SUB  UNSUB  LOG              O(1) COUNT + SUM            Rate-limit accounting
+BEGIN  COMMIT  ROLLBACK      <span class="accent">HNSW index</span> (vector)         --max-conn counter
+JOIN  GROUPBY  ALTER         <span class="accent">BM25 index</span> (lexical)        TLS handshake (BearSSL)
+INDEX  FIND  TOKEN  AUTH     <span class="accent">RRF hybrid</span> (server-side)
+AUDIT  DATETIME  SAVE        <span class="accent">Boolean DSL</span>
+LOAD  MATMUL  FLASH_ATTN     WAL (CRC32 frames)
+                             Subscription broadcast
+                                          │
+                                          ↓
+                            [self-contained binary, zero deps]</div>
   </div>
 </section>
 
-<section>
+<section id="benchmarks">
   <div class="wrap">
-    <h2>Numbers <span class="accent">→</span></h2>
+    <h2>Real numbers <span class="accent">→</span></h2>
     <p class="section-sub">
-      From <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/RESULTS.md">bench/RESULTS.md</a>
-      and <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/HNSW_BENCH.md">bench/HNSW_BENCH.md</a>
-      — methodology + every script reproducible from a clean checkout.
+      From
+      <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/RESULTS.md">bench/RESULTS.md</a>
+      and
+      <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/HNSW_BENCH.md">bench/HNSW_BENCH.md</a>.
+      Every script reproducible from a clean checkout. Numbers include the
+      TCP round-trip; SQLite numbers are in-process.
     </p>
-    <div class="stats">
-      <div class="stat">
-        <span class="num">12.7×</span>
-        <span class="label">HNSW vs brute-force<br>at 100K × 128</span>
+
+    <div class="bench-section">
+      <h3>1K-row aggregates: CuttleDB (TCP) vs SQLite (in-process)</h3>
+      <p class="bench-honest">
+        Honest framing: CuttleDB pays for a TCP round-trip per query;
+        SQLite runs inside your process. CuttleDB still wins read-path
+        aggregates 1.4–1.8× despite the network handicap — but loses
+        bulk INSERT 8.4× because the per-row TCP cost dominates a
+        small in-memory load.
+      </p>
+      <div class="bench-row">
+        <span class="bench-label">CuttleDB SUM (1K rows)</span>
+        <div class="bar"><div class="fill" style="width: 100%"></div></div>
+        <span class="bench-num">1.8× wins</span>
       </div>
+      <div class="bench-row">
+        <span class="bench-label">CuttleDB COUNT (1K rows)</span>
+        <div class="bar"><div class="fill" style="width: 90%"></div></div>
+        <span class="bench-num">1.6× wins</span>
+      </div>
+      <div class="bench-row">
+        <span class="bench-label">CuttleDB MIN (1K rows)</span>
+        <div class="bar"><div class="fill" style="width: 85%"></div></div>
+        <span class="bench-num">1.5× wins</span>
+      </div>
+      <div class="bench-row">
+        <span class="bench-label">CuttleDB SELECT WHERE (1K rows)</span>
+        <div class="bar"><div class="fill" style="width: 78%"></div></div>
+        <span class="bench-num">1.4× wins</span>
+      </div>
+      <div class="bench-row loss">
+        <span class="bench-label">SQLite INSERT (bulk 1K rows)</span>
+        <div class="bar"><div class="fill" style="width: 100%"></div></div>
+        <span class="bench-num">8.4× wins</span>
+      </div>
+    </div>
+
+    <div class="bench-section">
+      <h3>Vector KNN at scale: HNSW vs brute-force</h3>
+      <p class="bench-honest">
+        Apples-to-apples — both inside CuttleDB, both reading the same
+        embeddings. HNSW costs an upfront build (~93 s for 100K × 128),
+        then per-query latency falls hard.
+      </p>
+      <div class="bench-row">
+        <span class="bench-label">HNSW @ 100K × 128 dim</span>
+        <div class="bar"><div class="fill" style="width: 100%"></div></div>
+        <span class="bench-num">12.7×</span>
+      </div>
+      <div class="bench-row">
+        <span class="bench-label">HNSW @ 10K × 128 dim</span>
+        <div class="bar"><div class="fill" style="width: 30%"></div></div>
+        <span class="bench-num">2.1×</span>
+      </div>
+      <div class="bench-row loss">
+        <span class="bench-label">Brute force @ &lt; 2K rows</span>
+        <div class="bar"><div class="fill" style="width: 60%"></div></div>
+        <span class="bench-num">faster</span>
+      </div>
+    </div>
+
+    <div class="stats" style="margin-top: 2rem;">
       <div class="stat">
         <span class="num">2 ms</span>
-        <span class="label">Top-10 over 10K<br>vectors brute-force</span>
+        <span class="label">Top-10 brute-force<br>10K × 128</span>
       </div>
       <div class="stat">
         <span class="num">O(1)</span>
-        <span class="label">COUNT + SUM<br>via cached aggregates</span>
+        <span class="label">COUNT + SUM via<br>cached aggregates</span>
       </div>
       <div class="stat">
         <span class="num">&lt;1 MB</span>
         <span class="label">Self-contained binary<br>per platform</span>
+      </div>
+      <div class="stat">
+        <span class="num">0</span>
+        <span class="label">External runtime<br>dependencies</span>
       </div>
     </div>
   </div>
