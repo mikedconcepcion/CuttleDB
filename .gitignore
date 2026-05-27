@@ -1,0 +1,30 @@
+# CuttleDB .gitignore
+
+# Python build artifacts
+*.egg-info/
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+dist/
+.eggs/
+
+# Editor + OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Local dev/test state
+*.cuttledb
+.test_wal/
+.wal/
+.audit/
+
+# Local secrets — never commit
+*.env
+.env.local
+
+# Sigstore / signing scratch
+*.sig
+*.cert

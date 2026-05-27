@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CuttleDB browser quickstart (WebSocket)</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  pre  { background: #f4f4f4; padding: 1rem; border-radius: 6px; }
+  button { padding: .6rem 1.2rem; font-size: 1rem; margin-right: .5rem; }
+  .stat { color: #666; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<h1>CuttleDB in the browser — via WebSocket</h1>
+<p>This page connects to a running CuttleDB server over WebSocket. Start one with
+<code>cuttledb-server --port 7780</code> (the same one any Node or Python client
+would connect to). The database is shared — multiple tabs see each other's
+writes in real time.</p>
+
+<button id="run">Run demo</button>
+<button id="watch">Subscribe</button>
+<pre id="out">(idle)</pre>
+<p class="stat" id="info"></p>
+
+<script type="module">
+import { CuttleDB } from "../adapters/cuttledb.js";
+
+const out  = document.getElementById("out");
+const info = document.getElementById("info");
+
+const db = new CuttleDB({
+    transport: "ws",
+    url: `ws://${location.hostname || "127.0.0.1"}:7780`,
+});
+
+let hid = null, tid = null;
+
+document.getElementById("run").onclick = async () => {
+    if (!db.transport.socket) await db.connect();
+
+    hid = hid ?? await db.open();
+    tid = tid ?? await db.create(hid, "txn", [
+        ["customer", 2], ["type", 2], ["amount", 0],
+    ]);
+
+    await db.insertBatch(hid, tid, [
+        ["alice", "purchase",  100],
+        ["bob",   "purchase",  250],
+        ["alice", "refund",    -50],
+    ]);
+
+    const lines = [
+        `rows:       ${await db.count(hid, tid)}`,
+        `sum amount: ${await db.sum(hid, tid, 2)}`,
+        `min amount: ${await db.min(hid, tid, 2)}`,
+        `max amount: ${await db.max(hid, tid, 2)}`,
+        `rows > 100: ${JSON.stringify(await db.selectGt(hid, tid, 2, 100))}`,
+    ];
+    out.textContent = lines.join("\n");
+
+    const i = await db.info();
+    info.textContent = `Server: ${i.version} · uptime ${i.uptime_ms}ms · rows total ${i.rows}`;
+};
+
+document.getElementById("watch").onclick = async () => {
+    if (!db.transport.socket) await db.connect();
+    if (hid === null) { alert("Run the demo first to allocate handle + table."); return; }
+
+    db.on("event", (evt) => {
+        const stamp = new Date().toLocaleTimeString();
+        out.textContent += `\n[${stamp}] ${evt.op} row ${evt.rowId}`;
+    });
+    await db.sub(hid, tid);
+    out.textContent += "\n— subscribed; insert from another tab or the CLI to see events —";
+};
+</script>
+</body>
+</html>

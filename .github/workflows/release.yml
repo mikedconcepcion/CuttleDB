@@ -1,0 +1,85 @@
+name: release
+
+# CuttleDB release pipeline — runs on v* tag push.
+# Publishes Python (PyPI) and JS (npm) SDK packages.
+#
+# The GitHub Release object itself (with binary + signature attached)
+# is created MANUALLY before the tag push, via:
+#
+#   gh release create v0.6.0 \
+#     --notes "..." \
+#     cuttledb-server-windows-x64.exe{,.sig,.pem} \
+#     SHA256SUMS.txt
+#
+# Creating the Release with `gh release create` also creates the
+# underlying v0.6.0 tag, which fires this workflow. This ordering
+# guarantees the Release + binary + signatures exist BEFORE the
+# registry publishes — so the install + verification instructions in
+# README and SECURITY.md always point at a valid, fully-populated
+# Release target. No half-released window.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.6.0). Required for workflow_dispatch.'
+        required: true
+
+permissions:
+  id-token: write    # PyPI trusted publisher OIDC
+
+jobs:
+  # ── 1. Python wheel + PyPI publish ────────────────────────────────
+  publish-pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build wheel + sdist
+        working-directory: adapters/python
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          ls -lh dist/
+
+      - name: Validate package metadata
+        working-directory: adapters/python
+        run: python -m twine check dist/*
+
+      # PyPI trusted publishing: configure in https://pypi.org/manage/
+      # under the 'cuttledb' project. No API token required.
+      - name: Publish to PyPI (trusted publisher)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: adapters/python/dist/
+
+  # ── 2. npm package publish ────────────────────────────────────────
+  publish-npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Validate package metadata
+        working-directory: adapters
+        run: |
+          NAME=$(node -e "console.log(require('./package.json').name)")
+          VER=$(node -e "console.log(require('./package.json').version)")
+          echo "package: $NAME@$VER"
+          [ "$NAME" = "cuttledb" ] || { echo "package name != cuttledb"; exit 1; }
+
+      - name: Publish to npm
+        working-directory: adapters
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
