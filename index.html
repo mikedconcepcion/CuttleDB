@@ -117,16 +117,20 @@
      Inspired by htmx, fly.io, val.town, Linear changelog. */
 
   :root {
-    --bg:        #ffffff;
-    --text:      #1a1a1a;
-    --text-soft: #4a4a4a;
-    --text-mute: #6e6e6e;
-    --line:      #e8e8e8;
-    --line-soft: #f0f0f0;
-    --code-bg:   #f6f7f9;
-    --accent:    #2563eb;
-    --accent-bg: #eff5ff;
-    --max:       44em;
+    --bg:         #ffffff;
+    --text:       #1a1a1a;
+    --text-soft:  #4a4a4a;
+    --text-mute:  #6e6e6e;
+    --line:       #e8e8e8;
+    --line-soft:  #f0f0f0;
+    --code-bg:    #f6f7f9;
+    --accent:     #2563eb;       /* primary cue: blue */
+    --accent-bg:  #eff5ff;
+    --success:    #047857;       /* secondary cue: green (wins, ok) */
+    --success-bg: #ecfdf5;
+    --warn:       #b45309;       /* tertiary cue: amber (caveats, costs) */
+    --warn-bg:    #fffbeb;
+    --max:        44em;
   }
 
   * { box-sizing: border-box; }
@@ -320,11 +324,90 @@
   footer a { color: var(--text-mute); }
   footer a:hover { color: var(--text); }
 
+  /* Section number prefix (organization cue) */
+  h2 .num {
+    display: inline-block;
+    color: var(--text-mute);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.7em;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    margin-right: 0.7em;
+    vertical-align: 0.18em;
+  }
+
+  /* Note / callout boxes */
+  .note, .note-warn, .note-ok {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-bg);
+    padding: 0.8rem 1.05rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1.1rem 0;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+  .note .lbl, .note-warn .lbl, .note-ok .lbl {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-right: 0.5em;
+    color: var(--accent);
+  }
+  .note-warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .note-warn .lbl { color: var(--warn); }
+  .note-ok { border-left-color: var(--success); background: var(--success-bg); }
+  .note-ok .lbl { color: var(--success); }
+  .note p:first-child, .note-warn p:first-child, .note-ok p:first-child { margin-top: 0; }
+  .note p:last-child, .note-warn p:last-child, .note-ok p:last-child { margin-bottom: 0; }
+
+  /* Benchmark table colored cells */
+  td.win  { color: var(--success); font-weight: 600; }
+  td.loss { color: var(--warn); font-weight: 600; }
+
+  /* Showcase numbered badges */
+  .showcase-h {
+    display: flex;
+    align-items: baseline;
+    gap: 0.65rem;
+    margin: 2rem 0 0.4rem 0;
+  }
+  .showcase-h .badge {
+    flex: 0 0 auto;
+    display: inline-block;
+    width: 1.5rem;
+    height: 1.5rem;
+    line-height: 1.5rem;
+    text-align: center;
+    border-radius: 999px;
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .showcase-h h3 { margin: 0; font-size: 1.04rem; }
+
+  /* Top color ribbon (thin organizational anchor) */
+  body::before {
+    content: "";
+    display: block;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--success) 60%, var(--warn) 100%);
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+  }
+
+  /* Definition list: thin left border for organization */
+  dl { padding-left: 0.9rem; border-left: 2px solid var(--line); }
+
   /* Responsive */
   @media (max-width: 540px) {
     body { padding: 2rem 1.1rem 4rem 1.1rem; font-size: 16px; }
     h1 { font-size: 1.7rem; }
     h2 { font-size: 1.15rem; }
+    h2 .num { display: block; margin-bottom: 0.2rem; }
   }
 </style>
 </head>
@@ -366,7 +449,7 @@ Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory
 </header>
 
 <section id="install">
-<h2>Install</h2>
+<h2><span class="num">01</span>Install</h2>
 <p>Three paths, depending on how you want to consume it.</p>
 
 <div class="install-grid">
@@ -393,7 +476,7 @@ Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory
 </section>
 
 <section id="what">
-<h2>What it is</h2>
+<h2><span class="num">02</span>What it is</h2>
 
 <p>
   A line-based wire protocol over TCP or WebSocket. One dispatcher. Five
@@ -434,7 +517,7 @@ Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory
 </section>
 
 <section id="quickstart">
-<h2>Quickstart</h2>
+<h2><span class="num">03</span>Quickstart</h2>
 
 <p>Start the server, then talk to it from Python:</p>
 
@@ -462,11 +545,11 @@ console.log(rows);</code></pre>
 </section>
 
 <section id="showcases">
-<h2>Showcases</h2>
+<h2><span class="num">04</span>Showcases</h2>
 
 <p>Three things you would otherwise compose from several systems.</p>
 
-<h3>Agent memory in one binary</h3>
+<div class="showcase-h"><span class="badge">01</span><h3>Agent memory in one binary</h3></div>
 
 <p>
   A long-running agent needs to remember past observations, recall the
@@ -486,7 +569,7 @@ recent = db.knn("memory", "embed", query=embed_q, k=5)
 for evt in db.subscribe("memory"):
     update_local_cache(evt)</code></pre>
 
-<h3>Real-time UI without a separate pub/sub</h3>
+<div class="showcase-h"><span class="badge">02</span><h3>Real-time UI without a separate pub/sub</h3></div>
 
 <p>
   A dashboard wants to render new rows as they land — without polling and
@@ -501,7 +584,7 @@ for await (const evt of stream) {
     appendRow(evt.row);
 }</code></pre>
 
-<h3>Hybrid retrieval in one roundtrip</h3>
+<div class="showcase-h"><span class="badge">03</span><h3>Hybrid retrieval in one roundtrip</h3></div>
 
 <p>
   Vector recall alone misses exact-term matches. BM25 alone misses paraphrases.
@@ -527,24 +610,29 @@ for await (const evt of stream) {
 </section>
 
 <section id="bench">
-<h2>Benchmarks</h2>
+<h2><span class="num">05</span>Benchmarks</h2>
 
 <p>
   From <a href="https://github.com/mikedconcepcion/CuttleDB/blob/main/bench/RESULTS.md">bench/RESULTS.md</a>.
-  CuttleDB is a network server; SQLite is in-process. We pay for TCP, they don't.
-  The win is in <em>read-path</em> aggregates and in <em>vector</em> primitives
-  that SQLite needs extensions for.
+  CuttleDB is a network server; SQLite is in-process.
 </p>
+
+<div class="note-warn">
+  <span class="lbl">honest caveat</span>
+  We pay for TCP; SQLite doesn't. SQLite wins bulk INSERT 8.4×.
+  The CuttleDB win is in <em>read-path</em> aggregates and in <em>vector</em>
+  primitives that SQLite needs extensions for.
+</div>
 
 <h3>1K-row aggregates · CuttleDB over TCP vs SQLite :memory:</h3>
 
 <table>
   <tr><th>operation</th><th>winner</th><th>ratio</th></tr>
-  <tr><td>SUM</td>          <td>CuttleDB</td><td class="num">1.8×</td></tr>
-  <tr><td>COUNT</td>        <td>CuttleDB</td><td class="num">1.6×</td></tr>
-  <tr><td>MIN</td>          <td>CuttleDB</td><td class="num">1.5×</td></tr>
-  <tr><td>SELECT WHERE</td> <td>CuttleDB</td><td class="num">1.4×</td></tr>
-  <tr><td>bulk INSERT</td>  <td>SQLite</td>  <td class="num">8.4× (TCP overhead)</td></tr>
+  <tr><td>SUM</td>          <td class="win">CuttleDB</td><td class="num win">1.8×</td></tr>
+  <tr><td>COUNT</td>        <td class="win">CuttleDB</td><td class="num win">1.6×</td></tr>
+  <tr><td>MIN</td>          <td class="win">CuttleDB</td><td class="num win">1.5×</td></tr>
+  <tr><td>SELECT WHERE</td> <td class="win">CuttleDB</td><td class="num win">1.4×</td></tr>
+  <tr><td>bulk INSERT</td>  <td class="loss">SQLite</td><td class="num loss">8.4× (TCP overhead)</td></tr>
 </table>
 
 <h3>Vector KNN · 100K rows × 128 dim</h3>
@@ -552,7 +640,7 @@ for await (const evt of stream) {
 <table>
   <tr><th>method</th><th>throughput</th><th>recall@10</th></tr>
   <tr><td>AVX2+FMA brute force</td><td class="num">baseline</td><td class="num">1.0</td></tr>
-  <tr><td>HNSW index</td>          <td class="num">12.7× baseline</td><td class="num">1.0</td></tr>
+  <tr><td>HNSW index</td>          <td class="num win">12.7× baseline</td><td class="num">1.0</td></tr>
 </table>
 
 <p>
@@ -563,14 +651,16 @@ for await (const evt of stream) {
 </section>
 
 <section id="verify">
-<h2>Verify a release</h2>
+<h2><span class="num">06</span>Verify a release</h2>
 
-<p>
-  Every binary in every release ships with a <code>.cosign.bundle</code> next
-  to it — signature, signing certificate, and Rekor transparency-log inclusion
-  proof. Verify with the
-  <a href="https://docs.sigstore.dev/cosign/installation/">cosign</a> CLI:
-</p>
+<div class="note">
+  <span class="lbl">sigstore</span>
+  Releases are cosign-keyless signed. The <code>.cosign.bundle</code>
+  file carries the signature, the signing certificate, and the Rekor
+  transparency-log inclusion proof. No long-lived key for an attacker to steal.
+</div>
+
+<p>Verify with the <a href="https://docs.sigstore.dev/cosign/installation/">cosign</a> CLI:</p>
 
 <pre><code>cosign verify-blob \
   --bundle cuttledb-linux-x64.cosign.bundle \
@@ -586,7 +676,7 @@ for await (const evt of stream) {
 </section>
 
 <section id="faq">
-<h2>FAQ</h2>
+<h2><span class="num">07</span>FAQ</h2>
 
 <h3>Is CuttleDB free and open source?</h3>
 <p>
@@ -652,7 +742,7 @@ for await (const evt of stream) {
 </section>
 
 <section>
-<h2>Links</h2>
+<h2><span class="num">08</span>Links</h2>
 <ul>
   <li><a href="https://github.com/mikedconcepcion/CuttleDB">github.com/mikedconcepcion/CuttleDB</a></li>
   <li><a href="https://github.com/mikedconcepcion/CuttleDB/releases">Releases</a> · <a href="https://pypi.org/project/cuttledb/">PyPI</a> · <a href="https://www.npmjs.com/package/cuttledb">npm</a></li>
