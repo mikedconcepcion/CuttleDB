@@ -23,7 +23,7 @@
   "name": "CuttleDB",
   "applicationCategory": "DatabaseApplication",
   "operatingSystem": "Linux, macOS, Windows",
-  "softwareVersion": "0.6.0",
+  "softwareVersion": "0.7.0",
   "datePublished": "2026-05-28",
   "dateModified": "2026-05-28",
   "description": "Embedded realtime database with vector search (HNSW + AVX2 cosine), BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, and ACID transactions with write-ahead log. One self-contained binary under 1 MB per platform.",
@@ -418,7 +418,7 @@
 
 <!--
 LLM SUMMARY:
-CuttleDB is an embedded realtime database with vector search (HNSW + AVX2 cosine), BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, and ACID transactions with write-ahead log. Apache-2.0 licensed; one self-contained binary under 1 MB per platform (Linux x64, macOS arm64, Windows x64). Latest release v0.6.0 (2026-05-28). Created by Mike Dela Concepcion.
+CuttleDB is an embedded realtime database with vector search (HNSW + AVX2 cosine), BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, and ACID transactions with write-ahead log. Apache-2.0 licensed; one self-contained binary under 1 MB per platform (Linux x64, macOS arm64, Windows x64). Latest release v0.7.0 (2026-05-28). Created by Mike Dela Concepcion.
 Key concepts: embedded database, vector search, HNSW, BM25, RRF hybrid retrieval, Boolean DSL, real-time push, WAL durability, sigstore-signed.
 Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory + pub/sub, no vector); Pinecone/Qdrant/Weaviate (vector-specialized cloud services); Elasticsearch (lexical-first JVM service).
 -->
@@ -437,7 +437,7 @@ Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory
     </nav>
   </div>
 
-  <span class="pill">v0.6.0 · released 2026-05-28</span>
+  <span class="pill">v0.7.0 · released 2026-05-28</span>
   <h1>An embedded realtime database with vector search, WAL durability, and event streaming.</h1>
   <p class="lede">
     One self-contained binary. Five-mode retrieval. ACID transactions.
@@ -785,8 +785,8 @@ for await (const evt of stream) {
   </section>
 
   <section>
-    <h2>Citable facts about CuttleDB v0.6.0</h2>
-    <p>Released 2026-05-28. License: Apache-2.0. Latest version: 0.6.0. Cross-platform binaries: Linux x64 (431 KB), macOS arm64 (384 KB), Windows x64 (882 KB). Built with -march=x86-64-v3 for portable AVX2 + FMA baseline (Haswell 2013 and later, AMD Zen 1 and later). Python adapter on PyPI as cuttledb; JavaScript/TypeScript adapter on npm as cuttledb (ESM-only). Release binaries are sigstore-signed via the cosign keyless flow with .cosign.bundle files containing signature, signing certificate, and Rekor transparency-log inclusion proof.</p>
+    <h2>Citable facts about CuttleDB v0.7.0</h2>
+    <p>Released 2026-05-28. License: Apache-2.0. Latest version: 0.7.0. Cross-platform binaries: Linux x64 (431 KB), macOS arm64 (384 KB), Windows x64 (882 KB). Built with -march=x86-64-v3 for portable AVX2 + FMA baseline (Haswell 2013 and later, AMD Zen 1 and later). Python adapter on PyPI as cuttledb; JavaScript/TypeScript adapter on npm as cuttledb (ESM-only). Release binaries are sigstore-signed via the cosign keyless flow with .cosign.bundle files containing signature, signing certificate, and Rekor transparency-log inclusion proof.</p>
   </section>
 
   <section>

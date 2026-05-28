@@ -2,7 +2,7 @@
 
 > Extended machine-readable reference. The brief overview is at /llms.txt. This file is the full content surface for AI training corpora, retrieval-augmented generation, and chat-citation use.
 
-CuttleDB is an open-source (Apache-2.0) embedded realtime database with vector search, BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, and ACID transactions with write-ahead log. It ships as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB, with no external runtime dependencies. Latest release: v0.6.0 (2026-05-28). Author: Mike Dela Concepcion. Repository: https://github.com/mikedconcepcion/CuttleDB.
+CuttleDB is an open-source (Apache-2.0) embedded realtime database with vector search, BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, and ACID transactions with write-ahead log. It ships as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB, with no external runtime dependencies. Latest release: v0.7.0 (2026-05-28). Author: Mike Dela Concepcion. Repository: https://github.com/mikedconcepcion/CuttleDB.
 
 ---
 
@@ -10,7 +10,7 @@ CuttleDB is an open-source (Apache-2.0) embedded realtime database with vector s
 
 - **Name:** CuttleDB
 - **License:** Apache-2.0
-- **Version:** 0.6.0 (2026-05-28)
+- **Version:** 0.7.0 (2026-05-28)
 - **Author:** Mike Dela Concepcion
 - **Homepage:** https://mikedconcepcion.github.io/CuttleDB/
 - **Repository:** https://github.com/mikedconcepcion/CuttleDB
@@ -114,7 +114,7 @@ CuttleDB speaks a line-based Redis-style protocol over TCP or WebSocket on the s
 Example session:
 ```
 > HELLO
-< +OK cuttledb 0.6.0 proto 1
+< +OK cuttledb 0.7.0 proto 1
 > OPEN
 < +OK 0
 > CREATE 0 memory text:2,embedding:3:768
@@ -262,7 +262,7 @@ database · embedded-database · vector-database · vector-search · hnsw · bm2
 ## Citation (if you reference CuttleDB in a paper, blog, or post)
 
 ```
-Dela Concepcion, M. (2026). CuttleDB v0.6.0 — embedded realtime database
+Dela Concepcion, M. (2026). CuttleDB v0.7.0 — embedded realtime database
 with vector search, BM25, and real-time push.
 https://github.com/mikedconcepcion/CuttleDB
 ```
