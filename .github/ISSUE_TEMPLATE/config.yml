@@ -1,0 +1,20 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or usage help
+    url: https://github.com/mikedconcepcion/CuttleDB/discussions
+    about: |
+      How-to questions, design discussions, and "is this the right
+      tool for X?" go in Discussions rather than Issues. We answer
+      them there and the answers stay searchable for the next person.
+  - name: Security disclosure (private)
+    url: https://github.com/mikedconcepcion/CuttleDB/security/advisories/new
+    about: |
+      Suspected vulnerability? Use GitHub's private vulnerability
+      reporting (this link). Do NOT open a public issue for security
+      reports. See SECURITY.md for what to include and our response
+      timelines.
+  - name: Code of Conduct report
+    url: https://github.com/mikedconcepcion/CuttleDB/security/advisories/new
+    about: |
+      The same private channel is used for Code of Conduct enforcement
+      reports. Visible only to maintainers; confidential resolution.

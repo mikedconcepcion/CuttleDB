@@ -1,0 +1,103 @@
+# Release Notes
+
+## v0.7.0 — 2026-05-28
+
+Stability + correctness release. Three structural refactors eliminate
+the bug *classes* surfaced in v0.6.0 testing, plus an official
+Docker image and a wire-contract test suite that pins escape rules
+across every adapter.
+
+### Highlights
+
+- **One canonical per-column row emitter** (`emit_row_columns`). GET
+  and SELGT share one implementation; adding a new column type is
+  now a one-place change. Eliminates the structural condition behind
+  the v0.6.0 SELGT-crashes-on-VEC-tables bug.
+- **Safe bounded wire-buffer append helper** (`safe_appendf`).
+  Replaces the unsafe `send_n += snprintf(...)` pattern at all 13
+  call sites in the server. Auto-clamps on truncation so
+  `snprintf`'s desired-length return can't overflow the buffer.
+- **Wire-format escape contract** — documented in `PROTOCOL.md`,
+  enforced by `test_wire_contract.py` (Python) + `wire_contract.mjs`
+  (JS). Single canonical list of escape characters; encoder/decoder
+  drift across adapters is detected on first divergence.
+- **Official Docker image** at `ghcr.io/mikedconcepcion/cuttledb-server`.
+  Distroless runtime, ~25 MB, runs as non-root UID 65532. Build
+  verifies the binary's sigstore signature before assembling the
+  image. `docker run --rm -p 7780:7780 ghcr.io/mikedconcepcion/cuttledb-server:latest`.
+
+### Fixed
+
+- SELGT crashed the connection on any table containing a VEC column.
+- `wire_str_encode` didn't escape `;`; STRING values containing a
+  semicolon would split rows in SELGT output.
+- Python `_parse_rowlist` and JS `parseRowlist` / `get` used naive
+  `","` splits, mis-parsing any row whose STRING column contained
+  `,` or `;`.
+- JS `encodeValue` never escaped outbound STRING values — inserting
+  a string containing `,` `\` CR LF from JS silently misaligned the
+  column count. Pre-existing latent bug from v0.6.0; surfaced by the
+  new contract test.
+- SELGT row emitter could overflow `send_buf` on very-high-dim VEC
+  rows or escape-expanded long-string rows.
+
+### Added (testing + hardening)
+
+- Soak harness (`test_soak.py` + `.github/workflows/soak.yml`).
+  Mixed-workload memory-plateau check; workflow-dispatched with
+  configurable duration. Surfaced the SELGT/VEC crash on its first
+  real run.
+- Signal-handling tests (`test_signals.py`) — clean shutdown on
+  SIGTERM / SIGINT (POSIX) and `CTRL_BREAK_EVENT` (Windows).
+- Sanitizer-in-CI (server-side ASan + UBSan run on every push and
+  PR).
+- Continuous fuzz CI (libFuzzer harness for the WAL replay parser;
+  scheduled daily + manual; corpus cached between runs).
+
+### Engine roadmap
+
+Items still queued for future releases pending real-user signal:
+hash join, outer / non-equi joins, mTLS hardening, DDL inside
+transactions, multi-column `GROUPBY` / `HAVING`, client-side
+encrypted columns. Tracked in `docs/ROADMAP.md`.
+
+### Verifying a release binary
+
+Every binary in the GitHub Release ships with a `.cosign.bundle`
+file containing the signature, signing certificate, and Rekor
+transparency-log inclusion proof. See `SECURITY.md` for the recipe.
+
+[v0.7.0]: https://github.com/mikedconcepcion/CuttleDB/releases/tag/v0.7.0
+
+## v0.6.0 — 2026-05-27
+
+Initial public release. CuttleDB is an embedded realtime database
+with vector search, WAL durability, and event streaming, shipping as
+one self-contained binary with no external runtime dependencies.
+
+### Highlights
+
+- Five-mode retrieval: KNN (vector), BM25 (lexical), RRF hybrid,
+  Boolean DSL, filtered KNN. HNSW ANN index for VEC columns —
+  12.7× faster than brute force at 100K × 128.
+- ACID transactions with WAL durability; mid-transaction kill replay
+  exercised by integration tests.
+- Real-time push: `SUB` / `UNSUB` / `LOG` per-table change feed.
+- Multi-token auth, NDJSON audit log, TLS, Prometheus `/metrics`,
+  HTTP `/health`, `--max-conn` cap, rate limit, structured slow-query
+  log.
+- Python adapter on PyPI; JS adapter on npm; WebSocket transport for
+  browser clients.
+
+### Verifying a release binary
+
+Every binary in the GitHub Release ships with a matching `.sig` and
+`.pem` for cosign verification. See `SECURITY.md` for the recipe.
+
+### What's not yet here
+
+Graph types, native distributed sync, mTLS, EC keys, hash join,
+multi-column `GROUPBY` / `HAVING`, in-transaction DDL. Tracked in
+`docs/ROADMAP.md`.
+
+[v0.6.0]: https://github.com/mikedconcepcion/CuttleDB/releases/tag/v0.6.0

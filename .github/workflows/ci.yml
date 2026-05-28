@@ -1,0 +1,178 @@
+name: ci
+
+# CuttleDB CI — lint + adapter smoke-import on every push.
+# When a server binary is attached to a GitHub Release, the integration
+# job downloads it, starts the server, and runs the full adapter test
+# suite. Server binaries are built out-of-tree and attached to releases.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      binary_release_tag:
+        description: 'GitHub Release tag to pull binary from (default: latest)'
+        required: false
+        default: 'latest'
+
+jobs:
+  # ── Phase 1: lint + adapter import smoke (no binary required) ──────
+  # Always runs. Catches package metadata errors, broken imports,
+  # missing deps. Fast (~30s).
+  lint-and-import:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python adapter
+        working-directory: adapters/python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install ruff pytest
+
+      - name: Lint (advisory — doesn't fail the build yet)
+        working-directory: adapters/python
+        run: ruff check cuttledb/ || true
+
+      - name: Import smoke + version sanity
+        run: |
+          python -c "
+          import cuttledb
+          print('version:', cuttledb.__version__)
+          assert cuttledb.__version__, 'empty version'
+          # Class names exist
+          for name in ('CuttleDB', 'CuttleDBError', 'ColType', 'Op', 'Column', 'Event'):
+              assert hasattr(cuttledb, name), f'missing {name}'
+          print('all public symbols present')
+          "
+
+  # ── Phase 2: integration tests against a downloaded binary ──────
+  # Tries to pull the cuttledb-server binary from the latest GitHub
+  # Release. If none exists yet (first launch), skips with a warning
+  # instead of failing — the lint+import job above still gates merges.
+  integration:
+    needs: lint-and-import
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Resolve OS → binary asset name
+        id: bin
+        run: |
+          case "${{ matrix.os }}" in
+            ubuntu-latest)  echo "asset=cuttledb-server-linux-x64"       >> $GITHUB_OUTPUT ;;
+            macos-latest)   echo "asset=cuttledb-server-macos-arm64"     >> $GITHUB_OUTPUT ;;
+            windows-latest) echo "asset=cuttledb-server-windows-x64.exe" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Download cuttledb-server binary
+        id: download
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.binary_release_tag || '' }}
+        run: |
+          set -eu
+          mkdir -p .bin
+          # No tag → pull from latest non-draft release. `gh release
+          # download` without a tag arg picks "latest" automatically.
+          if [ -n "$TAG" ] && [ "$TAG" != "latest" ]; then
+            FETCH="$TAG"
+          else
+            FETCH=""
+          fi
+          if gh release download $FETCH --pattern "${{ steps.bin.outputs.asset }}" --dir .bin 2>/dev/null; then
+            BIN=".bin/${{ steps.bin.outputs.asset }}"
+            chmod +x "$BIN" 2>/dev/null || true
+            echo "have_binary=true" >> $GITHUB_OUTPUT
+            # Resolve absolute path for the downstream CUTTLEDB_BIN env.
+            ABS="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
+            echo "binary_path=$ABS" >> $GITHUB_OUTPUT
+            echo "Downloaded: $ABS"
+            ls -lh "$ABS"
+          else
+            echo "have_binary=false" >> $GITHUB_OUTPUT
+            echo "::warning title=No binary published yet::cuttledb-server is not yet attached to any GitHub Release in this repo. Integration tests skipped. Attach binaries via 'gh release upload <tag> cuttledb-server-*' to enable full CI coverage."
+          fi
+
+      - name: Install Python adapter + test deps
+        if: steps.download.outputs.have_binary == 'true'
+        working-directory: adapters/python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+          pip install numpy   # test_matmul_wire.py
+
+      - name: Start CuttleDB servers in background (open + auth-gated)
+        if: steps.download.outputs.have_binary == 'true'
+        env:
+          BIN: ${{ steps.download.outputs.binary_path }}
+        run: |
+          # Open server on 7780 — most tests.
+          "$BIN" --port 7780 > server.log 2>&1 &
+          echo $! > server.pid
+          # Auth-gated server on 7781 — test_multi_token.py.
+          "$BIN" --port 7781 --auth root-secret-for-tests > server-auth.log 2>&1 &
+          echo $! > server-auth.pid
+          for port in 7780 7781; do
+            for i in 1 2 3 4 5; do
+              if python -c "import socket; socket.create_connection(('127.0.0.1', $port), timeout=0.5).close()" 2>/dev/null; then
+                break
+              fi
+              sleep 1
+            done
+          done
+          echo "Open server log:"; cat server.log
+          echo "Auth server log:"; cat server-auth.log
+
+      - name: Run Python adapter tests
+        if: steps.download.outputs.have_binary == 'true'
+        working-directory: adapters/python
+        env:
+          CUTTLEDB_PORT: '7780'
+          CUTTLEDB_AUTH_PORT: '7781'
+          CUTTLEDB_AUTH_TOKEN: 'root-secret-for-tests'
+          CUTTLEDB_BIN: ${{ steps.download.outputs.binary_path }}
+        run: pytest tests/ -v
+
+      - name: Set up Node 22 + JS adapter smoke
+        if: steps.download.outputs.have_binary == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run JS adapter smoke (TCP)
+        if: steps.download.outputs.have_binary == 'true'
+        env:
+          CUTTLEDB_PORT: '7780'
+        run: node adapters/tests/smoke.mjs
+
+      - name: Stop servers
+        if: always() && steps.download.outputs.have_binary == 'true'
+        run: |
+          for pf in server.pid server-auth.pid; do
+            if [ -f "$pf" ]; then
+              kill $(cat "$pf") 2>/dev/null || true
+            fi
+          done

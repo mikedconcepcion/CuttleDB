@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cuttledb"
+version = "0.7.0"
+description = "CuttleDB Python client — embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "CuttleDB contributors" },
+]
+keywords = [
+    "database", "local-first", "vector-search", "embeddings", "knn",
+    "hnsw", "bm25", "full-text", "real-time", "change-feed",
+    "wasm", "embedded", "agents", "rag", "redis", "sqlite",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database :: Database Engines/Servers",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[project.urls]
+Homepage   = "https://github.com/mikedconcepcion/CuttleDB"
+Source     = "https://github.com/mikedconcepcion/CuttleDB"
+Issues     = "https://github.com/mikedconcepcion/CuttleDB/issues"
+Changelog  = "https://github.com/mikedconcepcion/CuttleDB/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+packages = ["cuttledb"]

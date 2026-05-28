@@ -1,0 +1,26 @@
+CuttleDB
+Copyright 2025-2026 Mike Dela Concepcion
+
+This product includes software developed by Mike Dela Concepcion.
+
+Licensed under the Apache License, Version 2.0 (the "License"); see
+the LICENSE file in this distribution for the full text.
+
+---
+
+Third-party components shipped inside the optional TLS build
+(CUTTLEDB_WITH_TLS=1):
+
+  BearSSL 0.6 — https://www.bearssl.org/
+  Copyright (c) 2016 Thomas Pornin <pornin@bolet.org>
+  Licensed under the MIT License.
+
+  Binary releases built with TLS bundle the BearSSL notice in the
+  release archive.
+
+The default (non-TLS) build contains no third-party code. All other
+source is original work covered by the Apache License above.
+
+---
+
+This NOTICE file is informational and does not modify the License.

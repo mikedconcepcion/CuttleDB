@@ -1,0 +1,93 @@
+name: docker
+
+# Build + publish the CuttleDB Docker image on every release tag.
+# Image is published to ghcr.io/mikedconcepcion/cuttledb-server, tagged
+# both with the version (e.g. v0.6.0) and "latest". The build downloads
+# the signed binary from the release that triggered the workflow, so
+# the image and the binary are version-pinned by construction.
+#
+# linux/amd64 only today — that's the only platform with a published
+# release binary. linux/arm64 lands when a macOS arm64 cross-build or
+# native Linux arm64 binary ships.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag to build (default: latest)'
+        required: false
+        default: 'latest'
+
+permissions:
+  contents: read
+  packages: write   # required to push to ghcr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#v}"
+          elif [ "${{ github.event.inputs.version }}" = "latest" ]; then
+            TAG=$(curl -fsSL https://api.github.com/repos/mikedconcepcion/CuttleDB/releases/latest | jq -r .tag_name)
+            VERSION="${TAG#v}"
+          else
+            TAG="v${{ github.event.inputs.version }}"
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "tag=$TAG"         >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Resolved: tag=$TAG version=$VERSION"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build + push (linux/amd64)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            VERSION=${{ steps.ver.outputs.version }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/cuttledb-server:${{ steps.ver.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/cuttledb-server:latest
+          labels: |
+            org.opencontainers.image.version=${{ steps.ver.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+
+      - name: Smoke-test pulled image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/cuttledb-server:${{ steps.ver.outputs.version }}
+          docker pull "$IMAGE"
+          # Start the server detached, give it 2s, send a HELLO via a
+          # quick netcat helper, then stop. Catches "binary missing
+          # libc symbol on this distroless tag" class of breakage.
+          CID=$(docker run -d -p 7780:7780 "$IMAGE")
+          trap "docker stop $CID >/dev/null 2>&1 || true" EXIT
+          sleep 2
+          # Use a small inline bash probe (TCP redirect available on
+          # ubuntu-latest's bash).
+          exec 3<>/dev/tcp/127.0.0.1/7780
+          printf 'HELLO\r\n' >&3
+          read -t 2 -r LINE <&3
+          exec 3<&-
+          echo "Server replied: $LINE"
+          echo "$LINE" | grep -q '^+OK cuttledb' || (echo "smoke FAILED"; exit 1)
+          echo "smoke PASS"

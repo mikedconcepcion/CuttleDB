@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CuttleDB realtime — two tabs, shared state</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  .panel { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
+  input, button { padding: .5rem .8rem; font-size: 1rem; }
+  ul { padding-left: 1.2rem; }
+  li { padding: 4px 0; }
+  .note { color: #666; font-size: 0.9rem; }
+  .live { background: #fff8dc; transition: background 1.5s; }
+</style>
+</head>
+<body>
+<h1>CuttleDB realtime — open me in two tabs</h1>
+<p class="note">Two browser tabs connect to the same CuttleDB server over
+WebSocket and subscribe to the same table. Whatever you type in one tab
+appears in the other within milliseconds. No back-end app code — only CuttleDB
+push.</p>
+
+<div class="panel">
+  <form id="form">
+    <input id="text" placeholder="Type something and press Enter…" size="40" autofocus>
+    <button type="submit">Add</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h3 style="margin-top:0">Messages</h3>
+  <ul id="msgs"></ul>
+</div>
+
+<script type="module">
+import { CuttleDB } from "../adapters/cuttledb.js";
+
+const db = new CuttleDB({
+    transport: "ws",
+    url: `ws://${location.hostname || "127.0.0.1"}:7780`,
+});
+await db.connect();
+
+// Use a stable handle (re-use across tabs by always picking hid 0).
+// First tab to OPEN gets a fresh one; later tabs OPEN their own; they
+// all CREATE the same name so the table id stays consistent.
+const hid = await db.open();
+const tid = await db.create(hid, "msgs", [["who", 2], ["text", 2]]);
+
+// Render existing rows on connect.
+const initialRows = await db.selectGt(hid, tid, 0, -1); // hack: get all
+// (selectGt with -1 threshold over INT col would error; instead use COUNT + GET loop)
+const count = await db.count(hid, tid);
+for (let i = 0; i < count; i++) {
+    const r = await db.get(hid, tid, i);
+    appendMsg(r, false);
+}
+
+// Subscribe to live changes.
+db.on("event", async (evt) => {
+    if (evt.op === "INS") {
+        const r = await db.get(evt.hid, evt.tid, evt.rowId);
+        appendMsg(r, true);
+    }
+});
+await db.sub(hid, tid);
+
+// Wire form.
+const tabId = Math.random().toString(36).slice(2, 6);
+document.getElementById("form").onsubmit = async (e) => {
+    e.preventDefault();
+    const inp = document.getElementById("text");
+    if (!inp.value) return;
+    await db.insert(hid, tid, [tabId, inp.value]);
+    inp.value = "";
+};
+
+function appendMsg([who, text], live) {
+    const li = document.createElement("li");
+    li.textContent = `[${who}] ${text}`;
+    if (live) {
+        li.classList.add("live");
+        setTimeout(() => li.classList.remove("live"), 100);
+    }
+    document.getElementById("msgs").appendChild(li);
+}
+</script>
+</body>
+</html>

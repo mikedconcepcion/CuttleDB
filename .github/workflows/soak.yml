@@ -1,0 +1,99 @@
+name: soak
+
+# Long-running soak test. Workflow-dispatch only — too slow for every PR.
+# Downloads the latest released cuttledb-server binary and runs the
+# mixed-workload memory-plateau check for the requested duration.
+#
+# Default: 5 minutes per release. For pre-1.0 stress: bump to 60.
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration_minutes:
+        description: 'Duration in minutes (default 5)'
+        required: false
+        default: '5'
+      plateau_mb:
+        description: 'Allowed RSS peak-to-trough delta in MB (default 30)'
+        required: false
+        default: '30'
+      binary_release_tag:
+        description: 'GitHub Release tag to pull binary from (default: latest)'
+        required: false
+        default: 'latest'
+
+jobs:
+  soak:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Soak on Linux + macOS. Windows soak runs separately if needed —
+        # MSYS scheduling noise muddies plateau assertions.
+        os: [ubuntu-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Resolve OS → binary asset name
+        id: bin
+        run: |
+          case "${{ matrix.os }}" in
+            ubuntu-latest) echo "asset=cuttledb-server-linux-x64"   >> $GITHUB_OUTPUT ;;
+            macos-latest)  echo "asset=cuttledb-server-macos-arm64" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Download cuttledb-server binary
+        id: download
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.binary_release_tag }}
+        run: |
+          set -eu
+          mkdir -p .bin
+          if [ -n "$TAG" ] && [ "$TAG" != "latest" ]; then
+            FETCH="$TAG"
+          else
+            FETCH=""
+          fi
+          if ! gh release download $FETCH --pattern "${{ steps.bin.outputs.asset }}" --dir .bin; then
+            echo "::error::no cuttledb-server binary in release ${TAG:-latest}; attach one before running soak"
+            exit 1
+          fi
+          BIN=".bin/${{ steps.bin.outputs.asset }}"
+          chmod +x "$BIN"
+          ABS="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
+          echo "binary_path=$ABS" >> $GITHUB_OUTPUT
+          echo "Resolved: $ABS"
+          ls -lh "$ABS"
+
+      - name: Install Python adapter + test deps
+        working-directory: adapters/python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest psutil
+
+      - name: Run soak (${{ github.event.inputs.duration_minutes }} min, plateau ${{ github.event.inputs.plateau_mb }} MB)
+        working-directory: adapters/python
+        env:
+          CUTTLEDB_SERVER_BIN:      ${{ steps.download.outputs.binary_path }}
+          CUTTLEDB_SOAK_MINUTES:    ${{ github.event.inputs.duration_minutes }}
+          CUTTLEDB_SOAK_PLATEAU_MB: ${{ github.event.inputs.plateau_mb }}
+        run: |
+          pytest tests/test_soak.py -v -s
+
+      - name: Upload sample log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soak-samples-${{ matrix.os }}
+          path: adapters/python/.pytest_cache/**/soak_samples.tsv
+          if-no-files-found: ignore

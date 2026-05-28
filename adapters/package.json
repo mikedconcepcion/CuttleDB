@@ -1,0 +1,62 @@
+{
+  "name": "cuttledb",
+  "version": "0.7.0",
+  "description": "CuttleDB JS/TS client \u00e2\u20ac\u201d embedded realtime database with vector search, WAL durability, and event streaming. Works in Node (TCP) and the browser (in-process WASM).",
+  "type": "module",
+  "main": "./cuttledb.js",
+  "types": "./cuttledb.d.ts",
+  "exports": {
+    ".": {
+      "types": "./cuttledb.d.ts",
+      "default": "./cuttledb.js"
+    },
+    "./browser": {
+      "types": "./cuttledb.d.ts",
+      "default": "./cuttledb.js"
+    },
+    "./node": {
+      "types": "./cuttledb.d.ts",
+      "default": "./cuttledb.js"
+    },
+    "./cluster": {
+      "types": "./cluster.d.ts",
+      "default": "./cluster.js"
+    }
+  },
+  "files": [
+    "cuttledb.js",
+    "cuttledb.d.ts",
+    "cluster.js",
+    "cluster.d.ts",
+    "README.md"
+  ],
+  "keywords": [
+    "database",
+    "vector-search",
+    "embeddings",
+    "real-time",
+    "knn",
+    "agents",
+    "rag",
+    "local-first",
+    "redis",
+    "sqlite",
+    "wasm"
+  ],
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mikedconcepcion/CuttleDB.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mikedconcepcion/CuttleDB/issues"
+  },
+  "homepage": "https://github.com/mikedconcepcion/CuttleDB#readme",
+  "scripts": {
+    "test": "node tests/smoke.mjs"
+  },
+  "sideEffects": false
+}
