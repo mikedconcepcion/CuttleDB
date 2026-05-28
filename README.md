@@ -35,10 +35,10 @@ $ cuttledb-server --port 7780 \
 
 Copy the binary, run it. No external runtime to install.
 
-## Current Status (v0.6)
+## Current Status (v0.7)
 
 CuttleDB is **production-orientation, surface still expanding**. The
-substrate is real and tested; some core surface APIs land in v0.7+;
+substrate is real and tested; some core surface APIs land in v0.8+;
 v1.0 ships when graph types and distributed sync arrive.
 
 **Stable** (shipped, tested, durable):
@@ -69,7 +69,7 @@ v1.0 ships when graph types and distributed sync arrive.
 - `Cluster` adapter + `cuttledb.replicate` companion for client-side
   composition (no native server-side cluster)
 
-**Not yet implemented** (on the v0.7+ / v1.0 path):
+**Not yet implemented** (on the v0.8+ / v1.0 path):
 
 - Graph types + traversal (`MATCH` verb)
 - Native CRDT / distributed sync
@@ -179,7 +179,7 @@ Two reproducible scripts ship today:
   Full table in [`bench/HNSW_BENCH.md`](./bench/HNSW_BENCH.md).
 
 What we don't yet benchmark (with reproducible scripts) — deferred
-to v0.7+ per [`bench/RESULTS.md`](./bench/RESULTS.md) § 4:
+to v0.8+ per [`bench/RESULTS.md`](./bench/RESULTS.md) § 4:
 
 - CuttleDB-over-TCP vs Redis-over-TCP (the fair comparison on the
   INSERT axis; both sides pay the socket cost)
@@ -197,7 +197,7 @@ docker run --rm -p 7780:7780 \
 
 The container is distroless, runs as non-root (UID 65532), and persists
 WAL via a `/var/lib/cuttledb/wal` volume. Build locally with
-`docker build --build-arg VERSION=0.6.0 -t cuttledb .` — the build
+`docker build --build-arg VERSION=0.7.0 -t cuttledb .` — the build
 verifies the binary's sigstore signature against Rekor before assembling
 the image.
 
@@ -242,8 +242,8 @@ npm install cuttledb
 ```
 
 > **Note:** The package is **ESM-only**. Use `import` (ES modules), not
-> `require()` (CommonJS). For CJS projects, either switch to ESM or
-> wait for v0.6.1 which adds dual-export.
+> `require()` (CommonJS). CJS projects must switch to ESM (or use a
+> dynamic `import()`).
 
 ```js
 import { CuttleDB } from "cuttledb";
