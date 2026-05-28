@@ -1,7 +1,7 @@
 {
   "name": "cuttledb",
-  "version": "0.7.0",
-  "description": "CuttleDB JS/TS client \u00e2\u20ac\u201d embedded realtime database with vector search, WAL durability, and event streaming. Works in Node (TCP) and the browser (in-process WASM).",
+  "version": "0.7.1",
+  "description": "CuttleDB JS/TS client — embedded realtime database with vector search, WAL durability, and event streaming. Works in Node (TCP) and the browser (in-process WASM).",
   "type": "module",
   "main": "./cuttledb.js",
   "types": "./cuttledb.d.ts",
