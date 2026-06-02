@@ -111,6 +111,27 @@ db.on("event", (evt) => console.log("changed:", evt));
 await db.sub(hid, tid);
 ```
 
+## Embeddable Quickstart (WASM, in-process)
+
+The same engine compiles to WebAssembly and runs entirely in-process — no
+server, no socket — in Node and the browser. A `WasmTransport` is injected
+into the standard SDK, so every verb works unchanged; only the transport
+differs. The kit (~350 KB engine + a thin embed layer) lives in
+https://github.com/mikedconcepcion/CuttleDB/tree/main/wasm.
+
+```javascript
+import { connect } from "cuttledb/wasm";   // or "./wasm/cuttledb.mjs"
+
+const db  = await connect();                              // boots in-process
+const hid = await db.open();
+const tid = await db.create(hid, "docs", [["body", 2]]);  // 2 = string
+await db.insert(hid, tid, ["a fast red fox leaps across the river"]);
+const hits = await db.lsearch(hid, tid, 0, 5, "fox");     // [{ rowId, score }]
+
+// Or load a pre-built snapshot instead of building from scratch:
+// const hid = await db.loadSnapshot(snapshotBytes);      // Uint8Array
+```
+
 ## Wire Protocol
 
 CuttleDB speaks a line-based Redis-style protocol over TCP or WebSocket on the same port. Full spec: https://github.com/mikedconcepcion/CuttleDB/blob/main/PROTOCOL.md

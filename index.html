@@ -525,6 +525,13 @@ Related to: SQLite + sqlite-vec (simpler embedded vector path); Redis (in-memory
   <li>TLS handshake, NDJSON audit log, Prometheus <code>/metrics</code>, HTTP <code>/health</code>.</li>
   <li>DoS defenses: <code>--max-conn</code>, payload size limits, connection-guard on long-running ops.</li>
 </ul>
+
+<p>
+  And with no server at all: the same engine compiles to <strong>WebAssembly</strong>
+  and runs <strong>in-process</strong> in Node and the browser — driven by the same
+  SDK, only the transport differs. See the
+  <a href="https://github.com/mikedconcepcion/CuttleDB/tree/main/wasm">wasm/ kit</a>.
+</p>
 </section>
 
 <section id="quickstart">
@@ -553,6 +560,17 @@ await db.insert("notes", [[1, "hello world", new Array(128).fill(0.1)]]);
 
 const rows = await db.knn("notes", "vec", { query: new Array(128).fill(0.1), k: 5 });
 console.log(rows);</code></pre>
+
+<p>Or run the engine in-process — no server — via WebAssembly:</p>
+
+<pre><code>import { connect } from "cuttledb/wasm";   // or "./wasm/cuttledb.mjs"
+
+const db  = await connect();                              // boots in-process
+const hid = await db.open();
+const tid = await db.create(hid, "docs", [["body", 2]]);  // 2 = string
+await db.insert(hid, tid, ["a fast red fox leaps across the river"]);
+
+const hits = await db.lsearch(hid, tid, 0, 5, "fox");     // [{ rowId, score }]</code></pre>
 </section>
 
 <section id="showcases">

@@ -2,7 +2,7 @@
 
 > Embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary, no external runtime dependencies. Apache-2.0.
 
-CuttleDB is an open-source database shipped as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB. It speaks a Redis-style line protocol over TCP or WebSocket. Latest release: v0.8.0 (2026-06-02).
+CuttleDB is an open-source database shipped as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB. It speaks a Redis-style line protocol over TCP or WebSocket — or runs entirely in-process via WebAssembly, no server. Latest release: v0.8.0 (2026-06-02).
 
 ## What CuttleDB is
 
@@ -27,6 +27,7 @@ Other built-in capabilities:
 - Multi-column `GROUPBY` with `HAVING`/`ORDER`/`LIMIT` (COUNT/SUM/MIN/MAX/AVG)
 - DDL (`CREATE`/`INDEX`/`ALTER`) inside transactions; DATETIME column type
 - Server-side ML compute verbs: MATMUL, MATMUL_B, FLASH_ATTN_B
+- Embeddable in-process via WebAssembly (Node + browser) — same SDK, no server; see wasm/
 
 ## What CuttleDB is NOT
 
@@ -66,6 +67,18 @@ with CuttleDB.connect("127.0.0.1", 7780) as db:
     db.sub(hid, tid)
     for evt in db.poll_events(timeout=1.0):
         print("changed:", evt)
+```
+
+In-process via WebAssembly (Node or browser), no server — same SDK:
+
+```javascript
+import { connect } from "cuttledb/wasm";   // or "./wasm/cuttledb.mjs"
+
+const db  = await connect();                              // boots in-process
+const hid = await db.open();
+const tid = await db.create(hid, "docs", [["body", 2]]);  // 2 = string
+await db.insert(hid, tid, ["a fast red fox leaps across the river"]);
+const hits = await db.lsearch(hid, tid, 0, 5, "fox");     // [{ rowId, score }]
 ```
 
 ## Performance (honest benchmarks)
