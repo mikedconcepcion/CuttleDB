@@ -2,7 +2,7 @@
 
 > Embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary, no external runtime dependencies. Apache-2.0.
 
-CuttleDB is an open-source database shipped as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB. It speaks a Redis-style line protocol over TCP or WebSocket. Latest release: v0.7.0 (2026-05-28).
+CuttleDB is an open-source database shipped as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB. It speaks a Redis-style line protocol over TCP or WebSocket. Latest release: v0.8.0 (2026-06-02).
 
 ## What CuttleDB is
 
@@ -21,7 +21,11 @@ Other built-in capabilities:
 - Real-time push: per-table `SUB`/`UNSUB` change feed, `LOG` ring buffer
 - Multi-token authentication, NDJSON audit log, TLS, rate limit, `--max-conn` cap
 - HTTP `/health` probe, Prometheus `/metrics` endpoint, structured slow-query log
-- 2-way inner equi-join, GROUPBY aggregates, DATETIME column type
+- Composite secondary indexes + `FINDC` multi-column point lookup (O(1) average)
+- `FIND` single-column exact lookup; string-column `UPDATE` (`UPDRS`/`UPDATES`)
+- Relational `JOIN` — hash equi-join, non-equi nested-loop, left/right/full outer
+- Multi-column `GROUPBY` with `HAVING`/`ORDER`/`LIMIT` (COUNT/SUM/MIN/MAX/AVG)
+- DDL (`CREATE`/`INDEX`/`ALTER`) inside transactions; DATETIME column type
 - Server-side ML compute verbs: MATMUL, MATMUL_B, FLASH_ATTN_B
 
 ## What CuttleDB is NOT
@@ -72,7 +76,7 @@ Numbers from bench/RESULTS.md and bench/HNSW_BENCH.md — every script reproduci
 - **Bulk INSERT (1K rows):** SQLite wins 8.4x — the per-row TCP cost dominates a small in-memory load. This is published as a loss, not hidden.
 - **HNSW vs brute-force at 100K x 128 dim:** 12.7x faster, recall@10 = 1.0.
 - **Top-10 brute-force over 10K vectors:** 2 ms.
-- **Binary size:** 384 KB (macOS arm64), 431 KB (Linux x64), 882 KB (Windows x64) — built `-march=x86-64-v3` for portable AVX2 baseline.
+- **Binary size:** 392 KB (macOS arm64), 435 KB (Linux x64), 519 KB (Windows x64) — built `-march=x86-64-v3` for portable AVX2 baseline.
 
 ## Docs
 
@@ -109,6 +113,7 @@ Numbers from bench/RESULTS.md and bench/HNSW_BENCH.md — every script reproduci
 
 ## Version history
 
+- **v0.8.0** (2026-06-02) — Bulk feature release. Composite secondary indexes + `FINDC` multi-column point lookup; string-column `UPDATE` (`UPDRS`/`UPDATES`); multi-column `GROUPBY` with `HAVING`/`ORDER`/`LIMIT`; real relational `JOIN` (hash equi-join, non-equi nested-loop, left/right/full outer); DDL inside transactions; full JS adapter retrieval parity. Snapshot format bumped to v5 (older snapshots still load).
 - **v0.7.0** (2026-05-28) — Stability + correctness release. Three structural refactors (canonical per-column row emitter, safe wire-buffer append helper, wire-format escape contract test) eliminate the bug classes the v0.6.0 fixes addressed point-wise. Official Docker image at ghcr.io/mikedconcepcion/cuttledb-server (distroless, ~25 MB, non-root UID 65532).
 - **v0.6.0** (2026-05-28) — Initial public release. Cross-platform binaries, sigstore signing, Apache-2.0, PyPI + npm + GitHub Releases.
 

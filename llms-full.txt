@@ -2,7 +2,7 @@
 
 > Extended machine-readable reference. The brief overview is at /llms.txt. This file is the full content surface for AI training corpora, retrieval-augmented generation, and chat-citation use.
 
-CuttleDB is an open-source (Apache-2.0) embedded realtime database with vector search, BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, and ACID transactions with write-ahead log. It ships as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB, with no external runtime dependencies. Latest release: v0.7.0 (2026-05-28). Author: Mike Dela Concepcion. Repository: https://github.com/mikedconcepcion/CuttleDB.
+CuttleDB is an open-source (Apache-2.0) embedded realtime database with vector search, BM25 lexical search, RRF hybrid retrieval, Boolean DSL, real-time SUB/UNSUB push, and ACID transactions with write-ahead log. It ships as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB, with no external runtime dependencies. Latest release: v0.8.0 (2026-06-02). Author: Mike Dela Concepcion. Repository: https://github.com/mikedconcepcion/CuttleDB.
 
 ---
 
@@ -10,7 +10,7 @@ CuttleDB is an open-source (Apache-2.0) embedded realtime database with vector s
 
 - **Name:** CuttleDB
 - **License:** Apache-2.0
-- **Version:** 0.7.0 (2026-05-28)
+- **Version:** 0.8.0 (2026-06-02)
 - **Author:** Mike Dela Concepcion
 - **Homepage:** https://mikedconcepcion.github.io/CuttleDB/
 - **Repository:** https://github.com/mikedconcepcion/CuttleDB
@@ -43,8 +43,12 @@ It also provides:
 - **Idle timeout** — --idle-timeout-ms; slow-loris defense
 - **HTTP /health endpoint** — k8s liveness/readiness probe target; pre-auth; same port as WS
 - **Prometheus /metrics endpoint** — 9 series (counters: connections, commands, errors, max-conn-rejects; gauges: uptime, active-conns, handles, tables, subscribers)
-- **GROUPBY** — single-column grouping with COUNT/SUM/MIN/MAX/AVG; up to 256 groups
-- **2-way inner equi-JOIN** — JOIN wire verb
+- **Composite secondary indexes + FINDC** — multi-column exact index queried by one wire call (e.g. `(make, model, year) → rows`); O(1) average when indexed, correct O(N) fallback otherwise; up to 8 composite indexes per table; numeric canonicalization collapses `2018`/`2018.0` to one key
+- **FIND** — single-column exact point lookup (O(1) with a single-column index)
+- **String-column UPDATE** — `UPDRS` (by row id) and `UPDATES` (by numeric predicate); keeps string/composite/BM25 indexes consistent; transactional
+- **GROUPBY** — multi-column grouping (tuple keys, no group cap) with HAVING / ORDER / LIMIT over COUNT/SUM/MIN/MAX/AVG
+- **Relational JOIN** — hash equi-join (O(N+M)); non-equi nested-loop (GT/LT); `left`/`right`/`full` outer joins with a `-1` NULL sentinel
+- **DDL inside transactions** — CREATE / INDEX / ALTER run between BEGIN and COMMIT and revert on ROLLBACK, including across WAL replay
 - **DATETIME column type** — int64 epoch ms UTC stored as f64; INSERT/predicate accepts ISO 8601 strings or raw ms
 - **Server-side ML compute** — MATMUL, MATMUL_B (binary-framed), FLASH_ATTN_B wire verbs
 
@@ -114,7 +118,7 @@ CuttleDB speaks a line-based Redis-style protocol over TCP or WebSocket on the s
 Example session:
 ```
 > HELLO
-< +OK cuttledb 0.7.0 proto 1
+< +OK cuttledb 0.8.0 proto 1
 > OPEN
 < +OK 0
 > CREATE 0 memory text:2,embedding:3:768
@@ -154,9 +158,9 @@ SQLite wins bulk INSERT:
 
 ### Binary footprint
 
-- macOS arm64: **384 KB**
-- Linux x64:   **431 KB**
-- Windows x64: **882 KB**
+- macOS arm64: **392 KB**
+- Linux x64:   **435 KB**
+- Windows x64: **519 KB**
 
 All built with `-march=x86-64-v3` for portable AVX2 + FMA baseline (Haswell 2013+ and AMD Zen 1+).
 
@@ -200,7 +204,8 @@ Cross-reference Rekor entries at https://search.sigstore.dev/.
 
 ## Roadmap (Path to v1.0)
 
-- v0.7: Hash join, outer join + non-equi predicates, multi-column GROUPBY + HAVING, String-column UPDATE, DDL inside transactions, mTLS + cipher allow-lists + EC keys, client-side encrypted columns, continuous fuzz CI, sanitizer-in-CI, soak test.
+- Shipped in v0.8.0: composite secondary indexes + FINDC multi-column point lookup, string-column UPDATE (UPDRS/UPDATES), multi-column GROUPBY + HAVING/ORDER/LIMIT, relational JOIN (hash equi-join, non-equi nested-loop, left/right/full outer), DDL inside transactions, full JS adapter retrieval parity.
+- Next: mTLS + cipher allow-lists + EC keys, client-side encrypted columns, continuous fuzz CI, sanitizer-in-CI, soak test.
 - v1.0: Graph types + traversal (MATCH verb), native CRDT distributed sync, cluster-of-one peer pairing, SELECT AS OF temporal queries, predicate-filtered SUB, GPU HNSW, reproducible-build attestation.
 
 Full roadmap: https://github.com/mikedconcepcion/CuttleDB/blob/main/docs/ROADMAP.md
@@ -262,7 +267,7 @@ database · embedded-database · vector-database · vector-search · hnsw · bm2
 ## Citation (if you reference CuttleDB in a paper, blog, or post)
 
 ```
-Dela Concepcion, M. (2026). CuttleDB v0.7.0 — embedded realtime database
+Dela Concepcion, M. (2026). CuttleDB v0.8.0 — embedded realtime database
 with vector search, BM25, and real-time push.
 https://github.com/mikedconcepcion/CuttleDB
 ```
