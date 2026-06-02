@@ -296,6 +296,31 @@ real-time push.
 
 ---
 
+## Quickstart — Embeddable (WASM, in-process)
+
+No server, no socket, no install: the engine is compiled to WebAssembly
+and runs **inside your Node or browser process**. The same SDK works
+unchanged — only the transport differs.
+
+```js
+import { connect } from "cuttledb/wasm";   // or "./wasm/cuttledb.mjs"
+
+const db  = await connect();                              // boots in-process
+const hid = await db.open();
+const tid = await db.create(hid, "docs", [["body", 2]]);  // 2 = string
+await db.insert(hid, tid, ["a fast red fox leaps across the river"]);
+
+const hits = await db.lsearch(hid, tid, 0, 5, "fox");     // [{ rowId, score }]
+```
+
+Every verb the TCP/WebSocket client exposes (`create`, `insert`, `find`,
+`index`, `lsearch`, `search`, transactions, …) works in-process. Load a
+pre-built snapshot with `await db.loadSnapshot(bytes)` instead of building
+from scratch. The kit (`~350 KB` engine + a thin embed layer) lives in
+[**wasm/**](wasm/) — see [wasm/README.md](wasm/README.md).
+
+---
+
 ## Scaling out
 
 CuttleDB is single-instance native. Multi-machine deployments
