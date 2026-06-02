@@ -5,6 +5,115 @@ All notable changes to CuttleDB are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] — 2026-06-02
+
+### Added
+
+- **Composite secondary indexes + `FINDC` verb.** A multi-column exact
+  index, queried by a single wire call, for the "match on several columns
+  at once" shape that a single-column `FIND` could not serve in O(1).
+  Motivated by the fitment lookup in the CuttleSearch store —
+  `(make, model, year) → product rows` — which previously fell back to a
+  linear `BSEARCH` scan.
+  - **Build:** `INDEX <hid> <tid> <c0> <c1> [c2…]` — two or more column
+    ids after the table build a composite index over their values. A
+    leading digit disambiguates from the single-column / `HNSW` / `BM25`
+    forms (those tokens start with a letter). Both numeric and string
+    columns may participate; `VEC` columns are rejected. Max 8 composite
+    indexes per table.
+  - **Query:** `FINDC <hid> <tid> <ncols> <c0> <c1> … <v0>\x1f<v1>…` —
+    returns `[r0;r1;…]` for the rows where every `col == value`. The
+    value block runs to end-of-line, `0x1f`-separated, so values may
+    contain spaces and commas. O(1) average when a composite index over
+    the same ordered column list exists; otherwise an O(N) scan over
+    per-row composite keys (so `FINDC` is always correct, indexed or not).
+  - **Canonicalization:** stored cells and query values pass through the
+    same form (`%lld` for integral numbers, `%.17g` otherwise, raw bytes
+    for strings), so `2018`, `2018.0`, and `2018.00` collapse to one key.
+  - **Maintenance:** indexes update incrementally on `INSERT`/`DELETE`
+    (swap-with-last fixup mirrors the per-column `StrIdx`). A pending
+    transaction drops composite indexes conservatively (rebuild via
+    `INDEX` after commit), mirroring the existing HNSW/BM25 behavior.
+  - **Persistence:** snapshot format bumped to **v5** — only the column
+    lists travel; the hash table is rebuilt from rows on `LOAD` (cheap,
+    matches how per-column string indexes are implicit). v1/v2/v4
+    snapshots still load unchanged.
+  - **Python adapter:** `index(hid, tid, *cols)` now accepts a column
+    list; new `findc(hid, tid, cols, values)`.
+  - Tests: `adapters/python/tests/test_composite_findc.py` (10 cases —
+    indexed + linear-scan parity, numeric canonicalization, incremental
+    insert/delete, snapshot round-trip, VEC rejection).
+
+- **String-column UPDATE** — `UPDRS` and `UPDATES` verbs. `UPDRS <hid>
+  <tid> <rowId> <col> <val>` sets one STRING cell by physical row id;
+  `UPDATES <hid> <tid> <setCol> <setVal> <predCol> <op> <thr>` sets a
+  STRING column for every row matching a numeric predicate. The change
+  keeps string / composite / BM25 indexes consistent and participates in
+  transactions. Until now only numeric `UPDATE` existed; STRING columns
+  could only be rewritten by delete + re-insert.
+  - **Adapters:** `update_row_str` / `update_where_str` (Python),
+    `updateRowStr` / `updateWhereStr` (JS).
+  - Tests: `adapters/python/tests/test_update_str.py`.
+
+- **GROUPBY enhancements** — `GROUPBY` gains four optional clauses:
+  `BY <cols…>` (multi-column grouping → tuple keys, no group-count cap),
+  `HAVING <op> <thr>` (post-aggregation filter on the aggregated value),
+  `ORDER <field> <dir>` (sort by `key`/`value`, `asc`/`desc`), and
+  `LIMIT <n>` (cap groups after ordering). Aggregates: count / sum / min
+  / max / avg.
+  - **Adapters:** `group_by(…, by=, having=, order=, limit=)` (Python),
+    `groupBy(hid, tid, groupCol, opts)` (JS).
+  - Tests: `adapters/python/tests/test_groupby_v08.py`.
+
+- **Join improvements** — `JOIN` becomes a real relational join. `Op.EQ`
+  equi-joins now run as a **hash join** (O(N+M), no group cap); `Op.GT` /
+  `Op.LT` are non-equi nested-loop joins (rejected past ~100M comparisons
+  with `join_too_large`). Outer joins via `TYPE`: `left` / `right` /
+  `full` pair an unmatched row with the `-1` NULL sentinel on the other
+  side. STRING-or-STRING and numeric (INT/FLOAT/DATETIME) columns join;
+  VEC is rejected.
+  - **Adapters:** `join(…, how=, op=)` (Python),
+    `join(…, opts)` (JS) → `[(leftRow, rightRow), …]`.
+  - Tests: `adapters/python/tests/test_join_v08.py`.
+
+- **DDL inside transactions** — `CREATE` / `INDEX` / `ALTER` are now
+  allowed between `BEGIN` and `COMMIT` and are reverted on `ROLLBACK`
+  (previously they returned `-ERR ddl in tx`). DDL joins the already-
+  transactional `INSERT` / `UPDATE` / `DELETE`, so schema and data
+  changes commit or roll back as one unit — including across a WAL
+  replay.
+  - Tests: `adapters/python/tests/test_ddl_in_tx_v08.py`,
+    `adapters/python/tests/test_wal_ddl_in_tx.py`.
+
+- **JS adapter retrieval parity.** The JS/TS client reaches feature
+  parity with the Python client on the retrieval surface: `findc`
+  (composite point lookup), `lsearch` (BM25), `bsearch` (Boolean DSL),
+  `search` (RRF hybrid), a multi-column composite `index`, and an
+  optional `{ where }` filter on `knn` / `search`. `cuttledb.d.ts` is
+  synced to the full shipped surface (it had drifted behind the already-
+  shipped `groupBy` / `join` / `updateRowStr` / `updateWhereStr`).
+
+- **CuttleSearch convenience client (optional add-on).** A thin, zero-
+  dependency client for the separate read-only **CuttleSearch** BM25 HTTP
+  service (default port 8787) ships inside the adapter package — for
+  CuttleDB users who also run CuttleSearch and don't want to hand-roll
+  `fetch` + JSON parsing. It is a **distinct import** (`cuttledb/search`
+  in JS, `cuttledb.search` in Python), not a method on `CuttleDB`,
+  because CuttleSearch speaks HTTP rather than the DB wire protocol.
+  - `CuttleSearchClient(baseUrl).search(q, { k, mode })` →
+    `{ query, k, mode, took_ms, total, hits: [{ id, score }] }`; plus
+    `health()`. Errors surface as `CuttleSearchError` carrying `.status`
+    and `.code` (e.g. `400` `bad_request`, `501` `not_implemented`).
+  - Tests: `adapters/tests/search.mjs`,
+    `adapters/python/tests/test_search_client.py`.
+
+### Changed
+
+- Transaction semantics: the smoke suites (Python `test_smoke.py`, JS
+  `smoke.mjs`) now assert the v0.8.0 contract — DDL inside a tx is
+  allowed and reverted on rollback — instead of the old `ddl in tx`
+  rejection.
+
 ## [0.7.0] — 2026-05-28
 
 Engine roadmap

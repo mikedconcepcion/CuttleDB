@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cuttledb"
-version = "0.7.0"
+version = "0.8.0"
 description = "CuttleDB Python client — embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary."
 readme = "README.md"
 requires-python = ">=3.8"

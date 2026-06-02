@@ -866,12 +866,14 @@ def test_tx_errors(db):
     with pytest.raises(CuttleDBError, match="already in tx"):
         db.begin()
 
-    # CREATE in tx rejected
+    # v0.8.0: DDL (CREATE/ALTER/INDEX) is now allowed inside a tx and is
+    # reverted on rollback. (Pre-v0.8.0 this raised "ddl in tx".)
     db.insert(hid, tid, [1])
-    with pytest.raises(CuttleDBError, match="ddl in tx"):
-        db.create(hid, "t2", [("x", ColType.INT)])
-
+    t2 = db.create(hid, "t2", [("x", ColType.INT)])
     db.rollback()
+    # the tx-created table must be gone after rollback
+    with pytest.raises(CuttleDBError):
+        db.sum(hid, t2, 0)
 
 
 # ── v0.5.1: DELETE inside transactions ─────────────────────────────────

@@ -266,14 +266,18 @@ async function runTransportSuite(label, makeDb) {
         assert.equal(await db.count(h2, t2), 2);
     });
 
-    await test("tx errors: nested begin, commit outside, ddl in tx", async () => {
+    await test("tx errors: nested begin, commit outside; DDL in tx allowed (v0.8.0)", async () => {
         const h2 = await db.open();
         const t2 = await db.create(h2, "t", [["v", 0]]);
         await assert.rejects(() => db.commit(),   /not in tx/);
         await db.begin();
         await assert.rejects(() => db.begin(),    /already in tx/);
-        await assert.rejects(() => db.create(h2, "x", [["v", 0]]), /ddl in tx/);
+        // v0.8.0: DDL inside a tx is now allowed and reverted on rollback.
+        const tCreated = await db.create(h2, "x", [["v", 0]]);
         await db.rollback();
+        // the tx-created table must be gone after rollback (count returns 0
+        // for an unknown tid, so probe with sum, which validates the tid)
+        await assert.rejects(() => db.sum(h2, tCreated, 0));
     });
 
     await test("transaction() helper commits on success, rolls back on throw", async () => {

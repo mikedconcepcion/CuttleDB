@@ -69,7 +69,7 @@ marketing. Typical results on a modern laptop:
 | MIN/MAX on 103 rows | <0.1 ms |
 | SAVE (35 KB snapshot) | ~1 ms |
 
-The CuttleDB engine itself is ~450 KB on disk. The brain you write
+The CuttleDB engine itself is ~550 KB on disk. The brain you write
 during a typical session is single-digit KB. The whole stack you
 just exercised is smaller than a single React app icon.
 

@@ -1,5 +1,67 @@
 # Release Notes
 
+## v0.8.0 — 2026-06-02
+
+Relational + retrieval release. Four engine features that were on the
+roadmap land together, the JS/TS client catches up to the Python one on
+the full retrieval surface, and the adapter package gains an optional
+client for the CuttleSearch HTTP search service.
+
+### Highlights
+
+- **Composite secondary indexes + `FINDC`.** Multi-column exact lookup
+  in one wire call — `(make, model, year) → rows` in O(1) average,
+  instead of a linear `BSEARCH` scan. `INDEX <hid> <tid> <c0> <c1> …`
+  builds it; `FINDC` queries it (always correct, indexed or not).
+- **String-column UPDATE** (`UPDRS` / `UPDATES`). Set a STRING cell by
+  row id, or set a STRING column across rows matching a numeric
+  predicate — transactional, index-consistent. No more delete +
+  re-insert to edit text.
+- **GROUPBY enhancements.** `BY` (multi-column / tuple keys), `HAVING`,
+  `ORDER` (key/value, asc/desc), `LIMIT` — `GROUPBY` is now a real
+  grouped-aggregate, not just count-per-key.
+- **Join improvements.** `Op.EQ` runs as a hash join (O(N+M), no cap);
+  `Op.GT` / `Op.LT` non-equi joins; `left` / `right` / `full` outer
+  joins with a `-1` NULL sentinel.
+- **DDL inside transactions.** `CREATE` / `INDEX` / `ALTER` now commit or
+  roll back atomically alongside `INSERT` / `UPDATE` / `DELETE`, across
+  WAL replay.
+
+### Adapters
+
+- **JS/TS retrieval parity.** The JS client gains `findc`, `lsearch`
+  (BM25), `bsearch` (Boolean DSL), `search` (RRF hybrid), composite
+  `index`, and `{ where }`-filtered `knn` / `search` — matching Python.
+  `cuttledb.d.ts` re-synced to the full shipped surface.
+- **CuttleSearch client (optional).** If you also run CuttleSearch — the
+  separate read-only BM25 HTTP service — the adapter package now ships a
+  thin, zero-dep client so you can call it in one line instead of
+  hand-rolling `fetch` + JSON:
+
+  ```js
+  import { CuttleSearchClient } from "cuttledb/search";
+  const res = await new CuttleSearchClient("http://localhost:8787")
+                      .search("quarterly revenue", { k: 5 });
+  // res.hits → [{ id, score }, …]
+  ```
+
+  ```python
+  from cuttledb.search import CuttleSearchClient
+  res = CuttleSearchClient("http://localhost:8787").search("quarterly revenue", k=5)
+  ```
+
+  It is a separate import — not a method on `CuttleDB` — because
+  CuttleSearch speaks HTTP, not the CuttleDB wire protocol. Errors
+  surface as `CuttleSearchError` with `.status` and `.code`.
+
+### Compatibility
+
+- Wire protocol additions are backward-compatible: new verbs and new
+  optional clauses on existing verbs; no existing verb changed shape.
+- Snapshot format bumped to **v5** for composite indexes; v1/v2/v4
+  snapshots still load unchanged.
+- Adapters published at `0.8.0` (npm `cuttledb`, PyPI `cuttledb`).
+
 ## v0.7.0 — 2026-05-28
 
 Stability + correctness release. Three structural refactors eliminate

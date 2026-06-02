@@ -34,7 +34,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
-__version__ = "0.6.0"
+__version__ = "0.8.0"
 __all__ = [
     "CuttleDB",
     "CuttleDBError",
@@ -185,6 +185,37 @@ def _split_wire_row(s: str) -> List[str]:
             i += 1
     out.append("".join(cur))
     return out
+
+
+def _parse_gb_component(s: str, i: int) -> Tuple[object, int, str]:
+    """Parse one GROUPBY key component starting at index ``i``.
+
+    Returns ``(value, next_index, terminator)`` where ``terminator`` is
+    ``"|"`` (another key component follows), ``":"`` (key ends, value
+    follows), or ``""`` (end of string). Quoted components decode to
+    ``str``; bare components decode to ``int`` then ``float`` then ``str``.
+    """
+    if i < len(s) and s[i] == '"':
+        end = s.find('"', i + 1)
+        if end < 0:
+            return s[i + 1:], len(s), ""
+        comp: object = s[i + 1:end]
+        nxt = end + 1
+        term = s[nxt] if nxt < len(s) else ""
+        return comp, nxt + 1, term
+    j = i
+    while j < len(s) and s[j] not in "|:":
+        j += 1
+    raw = s[i:j]
+    try:
+        comp = int(raw)
+    except ValueError:
+        try:
+            comp = float(raw)
+        except ValueError:
+            comp = raw
+    term = s[j] if j < len(s) else ""
+    return comp, j + 1, term
 
 
 def _encode_exec_str(s: str) -> str:
@@ -489,14 +520,17 @@ class CuttleDB:
     # ── Transactions ────────────────────────────────────────────────
 
     def begin(self) -> None:
-        """Open a transaction on this connection. Subsequent INSERT and
-        UPDATE on a single handle become atomic — ROLLBACK reverts them,
-        COMMIT durably applies them as one WAL batch.
+        """Open a transaction on this connection. Subsequent mutations on a
+        single handle become atomic — ROLLBACK reverts them, COMMIT durably
+        applies them as one WAL batch.
 
-        v0.5.0 limitations: DELETE and DDL (CREATE / INDEX / ALTER)
-        return ``-ERR`` inside a tx. Tx is scoped to a single handle —
-        the first mutation pins it; mutating a different hid returns
-        ``-ERR tx cross-handle``. Tx size cap: 4096 mutations."""
+        As of v0.8.0 the full mutation set is transactional, including DELETE
+        (v0.5.1) and DDL — CREATE / INDEX / ALTER (v0.8.0). DDL is reverted on
+        ROLLBACK: a tx-created table or tx-added column is dropped, and an
+        index built in-tx is reverted to the pre-tx index (or none). Reads
+        inside the tx see your own uncommitted writes. Tx is scoped to a
+        single handle — the first mutation pins it; mutating a different hid
+        returns ``-ERR tx cross-handle``. Tx size cap: 4096 operations."""
         self.send("BEGIN")
 
     def commit(self) -> int:
@@ -524,12 +558,16 @@ class CuttleDB:
         else:
             self.commit()
 
-    def index(self, hid: int, tid: int, col: int) -> int:
-        """Build a secondary index on a string column. Returns the number of
-        rows indexed at build time. Subsequent inserts and deletes maintain
-        the index automatically. Idempotent — rebuilding an existing index
-        drops and recreates it. v0.5.0 limitation: string columns only."""
-        return int(self.send(f"INDEX {hid} {tid} {col}"))
+    def index(self, hid: int, tid: int, col: int, *more_cols: int) -> int:
+        """Build a secondary index. With a single ``col`` (string column) this
+        is the classic per-column index queried by :meth:`find`. Pass two or
+        more columns to build a *composite* index over their canonical-joined
+        values, queried by :meth:`findc` for O(1) multi-column exact lookups
+        (numeric and string columns may participate). Returns the number of
+        rows indexed. Idempotent — rebuilding the same column list drops and
+        recreates it. Maintained automatically on insert/delete."""
+        cols = " ".join(str(c) for c in (col, *more_cols))
+        return int(self.send(f"INDEX {hid} {tid} {cols}"))
 
     def find(self, hid: int, tid: int, col: int, value: str) -> List[int]:
         """Return all row IDs where ``col == value``. O(1) if the column has
@@ -539,6 +577,26 @@ class CuttleDB:
         body = self.send(f"FIND {hid} {tid} {col} {value}")
         if not body.startswith("[") or not body.endswith("]"):
             raise CuttleDBError(f"bad find result: {body!r}")
+        inner = body[1:-1]
+        if not inner:
+            return []
+        return [int(x) for x in inner.split(";")]
+
+    def findc(self, hid: int, tid: int, cols: Sequence[int],
+              values: Sequence[object]) -> List[int]:
+        """Composite point lookup: return all row IDs where every
+        ``cols[i] == values[i]``. O(1) average when a composite index over the
+        same column list exists (build via ``index(hid, tid, *cols)``);
+        otherwise an O(N) scan. Values are joined with the 0x1f unit separator
+        so they may contain spaces and commas. Numeric values round-trip
+        through the same canonicalization as stored cells."""
+        if len(cols) != len(values):
+            raise CuttleDBError("findc: cols and values length mismatch")
+        col_list = " ".join(str(c) for c in cols)
+        val_block = "\x1f".join(str(v) for v in values)
+        body = self.send(f"FINDC {hid} {tid} {len(cols)} {col_list} {val_block}")
+        if not body.startswith("[") or not body.endswith("]"):
+            raise CuttleDBError(f"bad findc result: {body!r}")
         inner = body[1:-1]
         if not inner:
             return []
@@ -607,6 +665,51 @@ class CuttleDB:
             f"{pred_col} {int(op)} {int(threshold)}"
         ))
 
+    def update_row_str(
+        self,
+        hid: int,
+        tid: int,
+        row_id: int,
+        col: int,
+        new_val: str,
+    ) -> int:
+        """Set a single STRING cell by physical ``row_id`` (UPDRS, v0.8.0).
+        Returns 1 on success, raises ``CuttleDBError`` on bad inputs (e.g.
+        ``col`` is not a STRING column).
+
+        The string sibling of :meth:`update_row`. ``new_val`` is wire-escaped
+        (``\\``, ``,``, CR, LF) so embedded commas and newlines round-trip.
+        Secondary string indexes, composite indexes covering ``col`` and any
+        BM25 index on ``col`` are kept consistent; the change participates in
+        transactions (``BEGIN``/``ROLLBACK`` restores the prior value)."""
+        return int(self.send(
+            f"UPDRS {hid} {tid} {row_id} {col} {_encode_value(new_val)}"
+        ))
+
+    def update_where_str(
+        self,
+        hid: int,
+        tid: int,
+        set_col: int,
+        set_val: str,
+        pred_col: int,
+        op: int,
+        threshold: float,
+    ) -> int:
+        """Set STRING column ``set_col`` to ``set_val`` for every row where
+        ``pred_col {op} threshold`` (UPDATES, v0.8.0). Returns the number of
+        rows updated.
+
+        The string sibling of :meth:`update_where`. ``set_col`` must be a
+        STRING column; ``pred_col`` must be numeric. ``op`` is one of
+        ``Op.GT`` / ``Op.LT`` / ``Op.EQ``. ``set_val`` is wire-escaped so
+        embedded commas/newlines round-trip. Index maintenance and
+        transaction semantics match :meth:`update_row_str`."""
+        return int(self.send(
+            f"UPDATES {hid} {tid} {set_col} {pred_col} "
+            f"{int(op)} {int(threshold)} {_encode_value(set_val)}"
+        ))
+
     def delete_where(
         self,
         hid: int,
@@ -658,26 +761,46 @@ class CuttleDB:
     # ── JOIN (v1.0.4) ────────────────────────────────────────────────
 
     def join(self, l_hid: int, l_tid: int, l_col: int,
-             r_hid: int, r_tid: int, r_col: int
+             r_hid: int, r_tid: int, r_col: int,
+             how: str = "inner", op: object = Op.EQ
              ) -> List[Tuple[int, int]]:
-        """2-way inner equi-join. Returns ``[(left_row, right_row), ...]``.
+        """2-way join. Returns ``[(left_row, right_row), ...]``.
 
-        Matches rows where ``left.l_col == right.r_col``. Type
+        Matches rows where ``left.l_col {op} right.r_col``. Type
         compatibility: both columns must be STRING-or-STRING, or both
         numeric (INT/FLOAT/DATETIME interchange freely). VEC columns
         are rejected.
 
-        v1 uses a nested-loop join (O(N*M)). Fine for tables up to a
-        few thousand rows each; over ~100M total comparisons the
-        server rejects with ``join_too_large``. Hash join lands in
-        v1.1 for larger workloads.
+        ``how`` selects the join type (v0.8.0):
+
+        * ``"inner"`` (default) — only matched pairs.
+        * ``"left"``  — every left row; unmatched left rows pair with
+          right row ``-1`` (the NULL sentinel).
+        * ``"right"`` — every right row; unmatched right rows pair with
+          left row ``-1``.
+        * ``"full"``  — both unmatched sides included.
+
+        ``op`` is the join predicate (:class:`Op`): ``Op.EQ`` (default)
+        is an equi-join and runs as a **hash join** — O(N+M), no group
+        cap. ``Op.GT`` / ``Op.LT`` are non-equi joins (``left > right`` /
+        ``left < right``); these stay nested-loop and reject past ~100M
+        comparisons with ``join_too_large``. String columns compare
+        lexically (``strcmp``).
 
         Returns row-id pairs; fetch full rows via :meth:`get` if
         needed (sending entire rows inline would blow the response
         buffer fast).
         """
-        body = self.send(
-            f"JOIN {l_hid} {l_tid} {l_col} {r_hid} {r_tid} {r_col}")
+        how_map = {"inner": 0, "left": 1, "right": 2, "full": 3}
+        if how not in how_map:
+            raise ValueError(f"unknown how {how!r}; expected one of "
+                              f"{sorted(how_map)}")
+        cmd = f"JOIN {l_hid} {l_tid} {l_col} {r_hid} {r_tid} {r_col}"
+        if how_map[how] != 0:
+            cmd += f" TYPE {how_map[how]}"
+        if int(op) != int(Op.EQ):
+            cmd += f" OP {int(op)}"
+        body = self.send(cmd)
         body = body.strip()
         if body.startswith("[") and body.endswith("]"):
             body = body[1:-1]
@@ -695,7 +818,11 @@ class CuttleDB:
     # ── GROUP BY (v1.0.4) ────────────────────────────────────────────
 
     def group_by(self, hid: int, tid: int, group_col: int,
-                 agg: str = "count", agg_col: Optional[int] = None
+                 agg: str = "count", agg_col: Optional[int] = None,
+                 by: Optional[Sequence[int]] = None,
+                 having: Optional[Tuple[object, float]] = None,
+                 order: Optional[Tuple[object, object]] = None,
+                 limit: Optional[int] = None
                  ) -> List[Tuple[object, float]]:
         """Aggregate by grouping column. Returns ``[(group_key, value), ...]``.
 
@@ -704,11 +831,22 @@ class CuttleDB:
         and must be a numeric column (INT/FLOAT/DATETIME).
 
         ``group_key`` is returned as ``str`` for STRING group columns
-        and as ``int`` for numeric ones. ``value`` is always a number.
+        and as ``int``/``float`` for numeric ones. ``value`` is always a
+        number.
 
-        v1 limit: up to 256 distinct groups per query. Beyond that the
-        server returns ``too_many_groups``; pre-filter or aggregate in
-        wider buckets.
+        v0.8.0 clauses (all optional, generic CuttleDB API):
+
+        * ``by`` — additional grouping columns. With one or more extra
+          columns the result is grouped by the tuple of all key columns
+          and ``group_key`` is returned as a ``tuple`` (one component per
+          column, in ``[group_col, *by]`` order). No group-count cap.
+        * ``having`` — ``(op, threshold)`` post-aggregation filter on the
+          aggregated value. ``op`` is an :class:`Op` (GT/LT/EQ).
+        * ``order`` — ``(field, direction)``. ``field`` is ``"key"``/``0``
+          or ``"value"``/``1``; ``direction`` is ``"asc"``/``0`` or
+          ``"desc"``/``1``.
+        * ``limit`` — cap the number of returned groups (applied after
+          ordering).
         """
         agg_op_map = {"count": 0, "sum": 1, "min": 2, "max": 3, "avg": 4}
         if agg not in agg_op_map:
@@ -723,9 +861,28 @@ class CuttleDB:
             if agg_col is None:
                 raise ValueError(f"agg={agg!r} requires agg_col")
             ac = agg_col
-        body = self.send(f"GROUPBY {hid} {tid} {group_col} {op} {ac}")
-        # Wire format: "[key:value;key:value;...]" where string keys are
-        # quoted and numeric keys are bare.
+
+        cmd = f"GROUPBY {hid} {tid} {group_col} {op} {ac}"
+        multi = bool(by)
+        if by:
+            cmd += " BY " + " ".join(str(int(c)) for c in by)
+        if having is not None:
+            h_op, h_thr = having
+            cmd += f" HAVING {int(h_op)} {int(h_thr)}"
+        if order is not None:
+            o_field, o_dir = order
+            field_map = {"key": 0, "value": 1}
+            d_map = {"asc": 0, "desc": 1}
+            of = field_map[o_field] if isinstance(o_field, str) else int(o_field)
+            od = d_map[o_dir] if isinstance(o_dir, str) else int(o_dir)
+            cmd += f" ORDER {of} {od}"
+        if limit is not None:
+            cmd += f" LIMIT {int(limit)}"
+
+        body = self.send(cmd)
+        # Wire format: "[key:value;key:value;...]" where string components
+        # are quoted and numeric components are bare. Multi-column keys join
+        # their components with "|" (e.g. '"a"|"west":2').
         body = body.strip()
         if body.startswith("[") and body.endswith("]"):
             body = body[1:-1]
@@ -735,24 +892,19 @@ class CuttleDB:
         for entry in body.split(";"):
             if not entry:
                 continue
-            # Split on the FIRST colon — string keys may contain colons.
-            if entry.startswith("\""):
-                # Quoted string key — find matching close quote.
-                end = entry.find("\"", 1)
-                if end < 0 or end + 1 >= len(entry) or entry[end + 1] != ":":
-                    continue
-                key = entry[1:end]
-                value = entry[end + 2:]
-            else:
-                # Bare numeric key.
-                colon = entry.find(":")
-                if colon < 0:
-                    continue
-                try:
-                    key = int(entry[:colon])
-                except ValueError:
-                    key = entry[:colon]
-                value = entry[colon + 1:]
+            comps: List[object] = []
+            i = 0
+            value = ""
+            while i < len(entry):
+                comp, i, term = _parse_gb_component(entry, i)
+                comps.append(comp)
+                if term == ":":
+                    value = entry[i:]
+                    break
+                # term == "|" → another key component follows
+            if not comps:
+                continue
+            key: object = tuple(comps) if multi else comps[0]
             try:
                 value_num = float(value)
             except ValueError:
@@ -1351,6 +1503,12 @@ def _parse_rowlist(body: str) -> List[List[str]]:
     inner = body[1:-1]
     if not inner:
         return []
+    # Fast path: a backslash only ever appears as an escape (\, \; \\ \r \n),
+    # so its absence means no STRING value held a delimiter and native splits
+    # are exact — ~10x faster than the char-by-char escape-aware walk on the
+    # common numeric/simple-string rows. Fall back only when escapes exist.
+    if "\\" not in inner:
+        return [row.split(",") for row in inner.split(";")]
     return [_split_wire_row(row) for row in _split_wire_rows(inner)]
 
 

@@ -66,22 +66,41 @@ for await (const evt of stream) {
 }
 ```
 
+## CuttleSearch client (optional)
+
+If you also run [CuttleSearch](https://github.com/mikedconcepcion/CuttleDB) —
+the read-only BM25 HTTP search service — this package ships a tiny client so
+you don't have to hand-roll `fetch` + JSON parsing. It's a *separate* service
+(HTTP, default port 8787), so it's a separate import, not a method on `CuttleDB`:
+
+```js
+import { CuttleSearchClient } from "cuttledb/search";
+
+const cs = new CuttleSearchClient("http://localhost:8787");
+const res = await cs.search("quarterly revenue", { k: 5 });
+for (const hit of res.hits) console.log(hit.id, hit.score);
+```
+
+Errors surface as `CuttleSearchError` with `.status` and `.code` (e.g. `400`
+`bad_request`, `501` `not_implemented`). Zero deps — uses native `fetch`.
+
 ## What's in the box
 
 - ESM-only — `import`, no `require`
 - Zero runtime dependencies
 - TCP + WebSocket transports
-- Full verb coverage: KNN, LSEARCH, SEARCH, BSEARCH, JOIN, GROUPBY,
-  transactions, indexes, change feed, multi-token AUTH
+- Full verb coverage: KNN, LSEARCH, SEARCH, BSEARCH, FINDC, JOIN, GROUPBY,
+  transactions (incl. DDL), indexes, change feed, multi-token AUTH
 - `Cluster` adapter for client-side composition across multiple
   CuttleDB instances
+- `CuttleSearchClient` for the optional CuttleSearch HTTP search service
 
 ## Compatibility
 
 - Node ≥ 18
 - Browser: any with `WebSocket` + native `BigInt`
 - Server protocol: matches the cuttledb-server binary in the
-  same major.minor release. v0.7.x client works with v0.7.x server.
+  same major.minor release. v0.8.x client works with v0.8.x server.
 
 ## Links
 

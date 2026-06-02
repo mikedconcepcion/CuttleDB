@@ -4,10 +4,11 @@
 
 | Version  | Supported          | Notes |
 |----------|--------------------|-------|
-| 0.6.x    | :white_check_mark: | Active. Security fixes backported. |
+| 0.8.x    | :white_check_mark: | Current. Security fixes land on patch releases. |
+| ≤ 0.7.x  | :x:                | Superseded — upgrade to 0.8.x. |
 
 CuttleDB follows [Semantic Versioning](https://semver.org/). Security
-patches land as patch-version bumps (`0.6.x → 0.6.(x+1)`) within the
+patches land as patch-version bumps (`0.8.x → 0.8.(x+1)`) within the
 current minor series. The v0.x prefix is honest framing for a
 substrate that is production-orientation but with surface still
 expanding; v1.0 ships when graph types, distributed sync, mTLS, and

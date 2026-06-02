@@ -272,6 +272,74 @@ Scoring atoms (`~V[...]` for vectors, `~"phrase"` for BM25)
 contribute to a per-row RRF score; results are ranked by fused score
 when any scoring atom is present, otherwise by row_id ascending.
 
+### `INDEX <hid> <tid> <c0> <c1> [c2…]` — composite index (v0.8.0)
+
+Builds a **multi-column exact index** over two or more columns, queried
+by `FINDC` in one wire call. It serves the "match on several columns at
+once" shape — `(make, model, year)`, `(tenant, status)`,
+`(symbol, date)` — that a single-column `FIND` could only answer with a
+linear `BSEARCH` scan.
+
+This overloads the existing `INDEX` verb. The form is disambiguated by
+its second token: a **digit** means another column id (composite),
+whereas `HNSW` / `BM25` start with a letter.
+
+```
+INDEX 0 1 2 3 1        # composite over fitment columns (make, model, year)
+```
+
+- **2–8 columns.** Numeric and string columns may both participate;
+  `VEC` columns are rejected. Up to 8 composite indexes per table.
+- **Ordered.** `(2, 3, 1)` and `(1, 2, 3)` are distinct indexes;
+  `FINDC` must present the same ordered column list to hit the index.
+- Returns the number of rows indexed. Idempotent — rebuilding the same
+  column list drops and recreates it.
+
+### `FINDC <hid> <tid> <ncols> <c0> <c1> … <v0>\x1f<v1>…` (v0.8.0)
+
+Composite point lookup: returns `[r0;r1;…]` for the rows where **every**
+`col == value`.
+
+```
+FINDC 0 1 3 2 3 1 HONDA<US>CIVIC<US>2018
+                       └ values, 0x1f-separated ─┘
+```
+
+The value block runs to end-of-line and fields are separated by the
+`0x1f` unit separator (shown `<US>` above), so values may contain spaces
+and commas without escaping. `FINDC` is **always correct**: O(1) average
+when a composite index over the same ordered column list exists,
+otherwise an O(N) scan over per-row composite keys.
+
+**Canonicalization.** Stored cells and query values pass through one form
+so client-sent values round-trip: integral numbers as `%lld`, other
+numbers as `%.17g`, strings as raw bytes. `2018`, `2018.0`, and
+`2018.00` collapse to the same key.
+
+**Lifecycle.** `INSERT` and `DELETE` maintain the index incrementally
+(the swap-with-last delete mirrors the per-column string index). A
+pending transaction drops composite indexes conservatively — rebuild via
+`INDEX` after commit — matching the HNSW/BM25 invalidate-on-tx behavior.
+`SAVE` persists only the column-list definitions inside the **OCTO v5**
+snapshot; `LOAD` rebuilds the hash from rows in milliseconds. v1/v2/v4
+snapshots still load unchanged.
+
+**Benchmark — real-world driver.** The CuttleSearch tire store runs a
+fitment table of **628 K rows** and the "2018 Honda Civic" query shape.
+Before the composite index, CuttleDB answered it with a linear
+`BSEARCH` scan; after, with `FINDC`:
+
+| Vehicle-shape query | SQLite (FTS5) | CuttleDB before | CuttleDB after |
+|---|---|---|---|
+| Isolated backend primitive, p50 | 1.07 ms | ~16.5 ms (scan) | **3.71 ms** |
+| End-to-end router.search, p99 | 44.63 ms | — | **9.24 ms** |
+
+The composite index removes the 628 K-row scan; the residual cost is now
+one wire round-trip per `(make, model)` pair, not the scan. End-to-end
+the tail is **~5× tighter than SQLite's**. Results are an exact match
+vs SQLite (2018 Civic 233 rows, 2017 Corolla 211, Ford F-150 37).
+Reproduce with `stores/gtatire/bench_router.py` in the CuttleSearch repo.
+
 ---
 
 ## Security
@@ -425,18 +493,20 @@ selects, evictions). With `hid tid`: per-table counters.
 
 ## What's not yet here (and what plans to)
 
+As of v0.8.0 the write path, durability, transactions (incl. DDL),
+secondary + composite indexes, HNSW ANN, BM25, joins, and the full
+hardening tier (AUTH, TLS, audit, rate limit, `/health`, `/metrics`)
+have all shipped. What remains:
+
 | Feature | Status | Planned |
 |---|---|---|
-| `UPDATE` / `DELETE WHERE` | per-row only | v0.5 |
-| `BEGIN` / `COMMIT` / `ROLLBACK` | absent | v0.5 |
-| WAL-mode durability | snapshot only | v0.5 |
-| `ALTER TABLE` | absent | v0.5 |
-| Secondary indexes (strings) | absent | v0.5 |
-| `AUTH` / authentication | absent | v0.4 |
-| WebSocket transport | TCP + WASM only | v0.4 |
-| TLS | use stunnel | (intentional — no link-time crypto) |
-| Replication | absent | v1.0 |
-| Encrypted columns | absent | v1.0 |
-| ANN vector indexing | brute-force only | v1.0+ |
+| Mutual TLS (mTLS), EC keys, cipher allow-list, cert hot-reload | RSA + server-side TLS only | Next |
+| Client-side encrypted columns | absent | Next |
+| Graph types + traversal (`MATCH`) | absent | v1.0 |
+| Native CRDT / distributed sync | compose via `LOG`/`SUB` (`Cluster` adapter) | v1.0 |
+| `SELECT AS OF <ts>` temporal queries | substrate ready, surface absent | v1.0 |
+| Predicate-filtered `SUB` | substrate ready, surface absent | v1.0 |
+| GPU HNSW index | index lives on CPU | v1.0 |
+| Reproducible-build attestation | sigstore-signed releases today | v1.0 |
 
 See [ROADMAP.md](ROADMAP.md) for trajectory.

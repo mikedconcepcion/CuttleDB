@@ -41,8 +41,49 @@ export type Column = [string, number] | [string, 3, number];
 /** Row returned from `get` / `selectGt` — values are always strings. */
 export type Row = string[];
 
-/** Result of `knn` — pre-sorted by score descending. */
+/** Result of `knn` / `lsearch` / `bsearch` / `search` — pre-sorted by score
+ *  descending. */
 export interface KnnHit { rowId: number; score: number; }
+
+/** Aggregation function for `groupBy`. */
+export type AggFn = "count" | "sum" | "min" | "max" | "avg";
+
+/** Options for `groupBy`. */
+export interface GroupByOptions {
+    /** Aggregation applied per group. Default "count". */
+    agg?: AggFn;
+    /** Numeric column to aggregate. Required unless agg is "count". */
+    aggCol?: number;
+    /** Extra grouping columns beyond `groupCol`. */
+    by?: number | number[];
+    /** Post-aggregation filter `[op, threshold]` (op = Op.*). */
+    having?: [number, number];
+    /** Sort `[field, dir]`; field "key"|0 / "value"|1, dir "asc"|0 / "desc"|1. */
+    order?: ["key" | "value" | 0 | 1, "asc" | "desc" | 0 | 1];
+    /** Cap returned groups after ordering. */
+    limit?: number;
+}
+
+/** One aggregated group. `key` is scalar for a single grouping column, an
+ *  array of components when `by` adds more columns; `value` is the aggregate. */
+export interface GroupByResult { key: string | string[]; value: number; }
+
+/** Options for `join`. */
+export interface JoinOptions {
+    /** "inner" (default) | "left" | "right" | "full". Outer joins pair an
+     *  unmatched row with -1 (the NULL sentinel) on the other side. */
+    how?: "inner" | "left" | "right" | "full";
+    /** Join predicate (Op.*). Op.EQ (default) is a hash join; Op.GT / Op.LT
+     *  are non-equi nested-loop joins. */
+    op?: number;
+}
+
+/** Optional WHERE filter clause for `knn` / `search`. */
+export interface SearchOptions {
+    /** Phase-1 filter: "col OP value [AND col OP value ...]" (string values
+     *  quoted, numeric bare, up to 8 AND'd predicates). */
+    where?: string;
+}
 
 /** Result of `log` — cursor is the new high-water mark. */
 export interface LogResult {
@@ -76,8 +117,10 @@ export class CuttleDB {
     open(): Promise<number>;
     closeHandle(hid: number): Promise<void>;
     create(hid: number, name: string, columns: Column[]): Promise<number>;
-    /** Build a secondary index on a string column. */
-    index(hid: number, tid: number, col: number): Promise<number>;
+    /** Build a secondary index. One `col` → a classic per-column index
+     *  (queried by `find`); two or more cols → a *composite* index over their
+     *  canonical-joined values (queried by `findc`). Returns rows indexed. */
+    index(hid: number, tid: number, col: number, ...moreCols: number[]): Promise<number>;
     /** Add a column to an existing table. Returns new column index. */
     alterAdd(hid: number, tid: number, name: string, type: number, dim?: number): Promise<number>;
     /** Open a tx on this connection. */
@@ -90,6 +133,10 @@ export class CuttleDB {
     transaction<T>(fn: (db: CuttleDB) => Promise<T>): Promise<T>;
     /** Find row IDs where col == value (uses the index if present). */
     find(hid: number, tid: number, col: number, value: string): Promise<number[]>;
+    /** Composite point lookup: row IDs where every `cols[i] === values[i]`.
+     *  O(1) average with a composite index over the same column list, O(N)
+     *  scan otherwise. Values may contain spaces and commas. */
+    findc(hid: number, tid: number, cols: number[], values: (string | number)[]): Promise<number[]>;
 
     // DML — write
     insert(hid: number, tid: number, values: (string | number | number[])[]): Promise<number>;
@@ -98,6 +145,14 @@ export class CuttleDB {
     /** Set setCol=setVal for rows matching predicate. Returns rows updated. */
     updateWhere(hid: number, tid: number, setCol: number, setVal: number,
                 predCol: number, op: number, threshold: number): Promise<number>;
+    /** Set STRING column `col` on one row by physical rowId (UPDRS). Returns 1.
+     *  `newVal` is wire-escaped; string/composite/BM25 indexes stay consistent
+     *  and the change participates in transactions. */
+    updateRowStr(hid: number, tid: number, rowId: number, col: number, newVal: string): Promise<number>;
+    /** Set STRING column `setCol` to `setVal` for rows where
+     *  `predCol {op} threshold` (UPDATES). Returns rows updated. */
+    updateWhereStr(hid: number, tid: number, setCol: number, setVal: string,
+                   predCol: number, op: number, threshold: number): Promise<number>;
     /** Delete rows matching predicate. Returns rows deleted. */
     deleteWhere(hid: number, tid: number, predCol: number, op: number,
                 threshold: number): Promise<number>;
@@ -110,9 +165,25 @@ export class CuttleDB {
     max(hid: number, tid: number, col: number): Promise<number>;
     fcountGt(hid: number, tid: number, col: number, threshold: number): Promise<number>;
     selectGt(hid: number, tid: number, col: number, threshold: number): Promise<Row[]>;
+    /** Aggregate by one or more grouping columns. */
+    groupBy(hid: number, tid: number, groupCol: number, opts?: GroupByOptions): Promise<GroupByResult[]>;
+    /** 2-way join. Returns `[leftRowId, rightRowId]` pairs (-1 = unmatched
+     *  outer side). */
+    join(lHid: number, lTid: number, lCol: number, rHid: number, rTid: number,
+         rCol: number, opts?: JoinOptions): Promise<[number, number][]>;
 
-    // Vector search
-    knn(hid: number, tid: number, col: number, k: number, query: number[]): Promise<KnnHit[]>;
+    // Vector / text / hybrid search
+    /** Top-`k` nearest rows by cosine similarity. Pass `{ where }` to filter. */
+    knn(hid: number, tid: number, col: number, k: number, query: number[],
+        opts?: SearchOptions): Promise<KnnHit[]>;
+    /** Top-`k` BM25 lexical matches over a STRING column. */
+    lsearch(hid: number, tid: number, col: number, k: number, query: string): Promise<KnnHit[]>;
+    /** Boolean-DSL retrieval (filters + optional vector/BM25 scoring atoms). */
+    bsearch(hid: number, tid: number, k: number, expr: string): Promise<KnnHit[]>;
+    /** Hybrid KNN + BM25 retrieval fused via Reciprocal Rank Fusion. Pass
+     *  `{ where }` to filter both streams. */
+    search(hid: number, tid: number, vecCol: number, textCol: number, k: number,
+           vec: number[], query: string, opts?: SearchOptions): Promise<KnnHit[]>;
 
     // Persistence
     save(hid: number, path: string): Promise<string>;

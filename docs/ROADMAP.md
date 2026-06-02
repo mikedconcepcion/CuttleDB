@@ -4,7 +4,7 @@
 > exit condition; we move when that condition is met, not when a
 > calendar says so.
 
-## Shipped — v0.6 (current)
+## Shipped — v0.6
 
 **Theme: production-orientation hybrid retrieval substrate.**
 
@@ -56,29 +56,60 @@ transactions, and the enterprise-hardening Tier 1 set.
 first-time user can do `cuttledb-server --port 7780` and run a
 working CRUD + KNN + SUB session in under 60 seconds.
 
-## Next — v0.7
+## Shipped — v0.7
 
-**Theme: enterprise completion + ergonomic SQL parity.**
+**Theme: stability + correctness + test hardening.**
 
-- [ ] **Hash join** — drop the 100M cartesian cap for large equi-
-      joins; keep nested-loop for small tables (faster cache
-      profile).
-- [ ] **Outer join + non-equi predicates** — full SQL-style join
-      expressivity.
-- [ ] **String-column UPDATE** — multi-token value parsing; closes
-      the only remaining write-path gap.
-- [ ] **DDL inside transactions** — CREATE / INDEX / ALTER undo
-      semantics; lets schema migrations roll back cleanly.
-- [ ] **GROUPBY enhancements** — multi-column grouping, `HAVING`,
-      `ORDER BY`, hash-table variant for > 256 groups.
+- [x] **Canonical per-column row emitter** — GET and SELGT share one
+      implementation; adding a column type is a one-place change.
+- [x] **Safe bounded wire-buffer append** (`safe_appendf`) — auto-
+      clamps on truncation; replaces the unsafe `snprintf` accumulate
+      pattern at all call sites.
+- [x] **Wire-format escape contract** — documented in `PROTOCOL.md`,
+      enforced by cross-adapter contract tests.
+- [x] **Official Docker image** — distroless, ~25 MB, non-root UID
+      65532; build verifies the binary's sigstore signature.
+- [x] **Soak harness** — mixed-workload memory-plateau check.
+- [x] **Signal-handling tests** — clean shutdown on SIGTERM / SIGINT
+      / `CTRL_BREAK_EVENT`.
+- [x] **Sanitizer-in-CI** — server-side ASan + UBSan on every push/PR.
+- [x] **Continuous fuzz CI** — libFuzzer harness for the WAL replay
+      parser; scheduled daily + manual.
+
+## Shipped — v0.8 (current)
+
+**Theme: relational completion + retrieval parity.**
+
+- [x] **Composite secondary indexes + `FINDC`** — multi-column exact
+      lookup in one wire call, O(1) average. Snapshot format → v5
+      (v1/v2/v4 still load).
+- [x] **String-column UPDATE** — `UPDRS` (by row id) / `UPDATES` (by
+      numeric predicate); index- and transaction-consistent. Closes
+      the last write-path gap.
+- [x] **GROUPBY enhancements** — multi-column `BY` (tuple keys, no
+      group cap), `HAVING`, `ORDER` (key/value, asc/desc), `LIMIT`.
+- [x] **Join improvements** — hash equi-join (O(N+M), no cap);
+      non-equi `GT`/`LT`; `left`/`right`/`full` outer joins (-1 NULL
+      sentinel).
+- [x] **DDL inside transactions** — `CREATE` / `INDEX` / `ALTER`
+      commit or roll back atomically with row mutations, across WAL
+      replay.
+- [x] **JS adapter retrieval parity** — `findc`, `lsearch`, `bsearch`,
+      `search` (RRF), composite `index`, `{where}`-filtered `knn` /
+      `search` — matching Python.
+- [x] **CuttleSearch convenience client (optional)** — zero-dep
+      `CuttleSearchClient` in the `cuttledb` package (`cuttledb/search`
+      JS, `cuttledb.search` Python) for the separate read-only BM25
+      HTTP service.
+
+## Next
+
+**Theme: security depth + at-rest privacy.**
+
 - [ ] **mTLS, cipher allow-lists, EC keys, cert hot-reload, OCSP
       stapling**.
 - [ ] **Client-side encrypted columns** — encrypt before INSERT,
       decrypt after GET; no server-side crypto.
-- [ ] **Continuous fuzz CI** — protocol fuzzer running on every PR.
-- [ ] **Sanitizer-in-CI** — ASan + UBSan smoke tests on every PR.
-- [ ] **Soak test** — long-running workload + memory plateau check
-      every release.
 
 ## Then — v1.0
 

@@ -120,32 +120,84 @@ features earn their cost.
 
 | Op | CuttleDB (TCP) | SQLite (in-proc) | Verdict |
 |---|---:|---:|---|
-| SUM (1 call) | 0.026 ms | 0.042 ms | **CuttleDB 1.6×** |
-| MIN (1 call) | 0.032 ms | 0.049 ms | **CuttleDB 1.5×** |
-| COUNT WHERE (1 call) | 0.024 ms | 0.043 ms | **CuttleDB 1.8×** |
-| SELECT WHERE (1 call) | 0.058 ms | 0.080 ms | **CuttleDB 1.4×** |
+| SUM (1 call) | 0.029 ms | 0.043 ms | **CuttleDB 1.5×** |
+| MIN (1 call) | 0.030 ms | 0.047 ms | **CuttleDB 1.6×** |
+| COUNT WHERE (1 call) | 0.029 ms | 0.041 ms | **CuttleDB 1.4×** |
+| SELECT WHERE (1 call) | 0.066 ms | 0.079 ms | **CuttleDB 1.2×** |
 
-**Scoped claim:** *on in-memory aggregate queries and predicate
-scans over 1,000 rows, CuttleDB completes SUM / MIN / COUNT 1.5–1.8×
-faster than SQLite, and SELECT WHERE 1.4× faster, despite paying
-the TCP-loopback round-trip cost SQLite skips entirely.*
+**Scoped claim:** *on in-memory aggregate queries and predicate scans
+over 1,000 rows, CuttleDB completes SUM / MIN / COUNT 1.4–1.6× faster
+than SQLite, and SELECT WHERE (returning ~100 rows) 1.2× faster,
+despite paying the TCP-loopback round-trip cost SQLite skips entirely.*
 
 That's exactly what was measured. We don't claim "CuttleDB is faster
 than SQLite" in general — these are four specific queries at one
 specific dataset size on one specific machine.
 
-**Why CuttleDB wins here, despite the network handicap:** the
-substrate uses AVX2 SIMD predicate scans + cached O(1) aggregates.
+**Why CuttleDB wins the aggregates, despite the network handicap:**
+the substrate uses AVX2 SIMD predicate scans + cached O(1) aggregates.
 COUNT and SUM read from a running counter — constant time
 regardless of row count. MIN/MAX/FCOUNT run a SIMD lane over the
 column. SQLite walks the B-tree per row even at this small scale.
 The substrate-level work CuttleDB does is fast enough to repay the
 TCP cost.
 
+**Why SELECT WHERE is the closest race:** it returns ~100 rows, so the
+server scan (microseconds) is no longer the dominant cost — wire
+serialization + client-side row parsing is. The SIMD scan plus a
+fast-path row decoder in the SDK (native splits when no value needs
+escaping) keep CuttleDB ahead even paying the socket round-trip SQLite
+skips. The margin is the slimmest of the four because this is the path
+where the network model costs the most.
+
 **Caveat on absolute numbers:** these are medians on the test machine.
 Your machine will differ — typically Linux + native gcc shows
 CuttleDB's TCP loopback round-trip in the 30–50 µs range
 (noticeably faster than Windows). Re-run the script.
+
+### Result 2.3 — composite index vs linear scan (v0.8.0)
+
+This result uses a **larger, real-world dataset** than the synthetic
+1,000-row set above: the CuttleSearch tire store's `fitment` table —
+**628,063 rows** of `(product_id, year, make, model)` — and the
+multi-column lookup shape "2018 Honda Civic" → matching product rows.
+Reproduction script lives in the CuttleSearch repo
+(`stores/gtatire/bench_router.py`), not `bench/`, because it needs that
+store's source data.
+
+The query matches three columns at once (`make = HONDA AND model = CIVIC
+AND year = 2018`). Before v0.8.0, CuttleDB had no multi-column index, so
+the router answered it with a linear `BSEARCH` scan over all 628 K rows.
+v0.8.0 adds a composite index (`INDEX … <c0> <c1> <c2>`) and the `FINDC`
+verb, turning the scan into a hash lookup.
+
+| Vehicle-shape query | SQLite (FTS5, in-proc) | CuttleDB before | CuttleDB after |
+|---|---:|---:|---:|
+| Isolated backend primitive, p50 | 1.07 ms | ~16.5 ms (scan) | **3.71 ms** |
+| End-to-end router.search, p99 | 44.63 ms | — | **9.24 ms** |
+
+**What this measures:** the cost of resolving one vehicle to its fitting
+products, both as the isolated retrieval primitive and end-to-end
+through the store's query router (parse → retrieve → rank).
+
+**What changed:** the composite index removes the 628 K-row scan. The
+residual 3.71 ms is now **one TCP round-trip per `(make, model)` pair**
+(a vehicle expands to several model variants), not scan time — the
+work moved off the critical path and onto the network, the same
+asymmetry § 2 describes. End-to-end, CuttleDB's p99 tail is **~5×
+tighter than SQLite's** (9.24 ms vs 44.63 ms): the composite index has
+no degenerate cases, whereas SQLite's FTS5 path does.
+
+**Correctness:** CuttleDB returns an **exact match** to SQLite on every
+probe — 2018 Civic 233 rows, 2017 Corolla 211, Ford F-150 (no year) 37.
+`FINDC` is correct with or without the index (it falls back to an O(N)
+composite-key scan when no matching index exists); the index only
+changes the speed.
+
+**Honest residual:** the per-pair round-trip means a vehicle that
+expands to many model variants pays N round-trips. A batched
+multi-value `FINDC` (one round-trip for the whole vehicle) is the next
+optimization; it is not in v0.8.0.
 
 ---
 

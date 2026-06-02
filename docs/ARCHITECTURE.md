@@ -126,8 +126,8 @@ subscribed socket. Subscribers either:
   runtime-minted tokens via `TOKEN ADD`. Each token has an id;
   audit log entries attribute every command to a token id.
 - **TLS** — `--tls-cert` + `--tls-key` flags; requires
-  `CUTTLEDB_WITH_TLS=1` build. RSA cert + server-side handshake in
-  v0.6; EC keys and mTLS in v0.7+.
+  `CUTTLEDB_WITH_TLS=1` build. RSA cert + server-side handshake.
+  EC keys and mTLS are not shipped yet (on the roadmap).
 - **Connection cap** — `--max-conn N` rejects new sockets beyond a
   cap (atomic counter; DoS defense).
 - **Rate limit** — `--rate-limit N` per-connection commands/sec.

@@ -35,11 +35,12 @@ $ cuttledb-server --port 7780 \
 
 Copy the binary, run it. No external runtime to install.
 
-## Current Status (v0.7)
+## Current Status (v0.8)
 
 CuttleDB is **production-orientation, surface still expanding**. The
-substrate is real and tested; some core surface APIs land in v0.8+;
-v1.0 ships when graph types and distributed sync arrive.
+substrate is real and tested; the relational + retrieval surface is
+broad as of v0.8; v1.0 ships when graph types and distributed sync
+arrive.
 
 **Stable** (shipped, tested, durable):
 
@@ -53,8 +54,15 @@ v1.0 ships when graph types and distributed sync arrive.
   mid-transaction kill replay — pinned by integration tests)
 - Real-time push: `SUB` / `UNSUB` / `LOG` per-table change feed
 - Aggregations: O(1) `COUNT`/`SUM`; SIMD `MIN`/`MAX`/`FCOUNT`;
-  `GROUPBY` with COUNT/SUM/MIN/MAX/AVG
-- 2-way inner equi-join (`JOIN` wire verb)
+  `GROUPBY` with COUNT/SUM/MIN/MAX/AVG, multi-column `BY` (tuple
+  keys), `HAVING`, `ORDER`, `LIMIT`
+- Joins (`JOIN` wire verb): hash equi-join (O(N+M)), non-equi
+  `GT`/`LT`, and `left`/`right`/`full` outer joins (-1 NULL sentinel)
+- Composite secondary indexes + `FINDC` (multi-column exact lookup
+  in one wire call)
+- String-column `UPDATE` (`UPDRS` by row id, `UPDATES` by predicate)
+- DDL inside transactions (`CREATE` / `INDEX` / `ALTER` commit or
+  roll back atomically with row mutations)
 - Multi-token auth (`TOKEN ADD`/`LIST`/`REVOKE`), audit log
   (NDJSON per UTC day), rate limit, idle timeout, slow-query log
   (NDJSON, day-rotated), `--max-conn` DoS cap, HTTP `/health` probe,
@@ -74,10 +82,7 @@ v1.0 ships when graph types and distributed sync arrive.
 - Graph types + traversal (`MATCH` verb)
 - Native CRDT / distributed sync
 - Mutual TLS (mTLS), EC private keys, cipher allow-list, cert hot-reload
-- Multi-column `GROUPBY` / `HAVING`, hash join, outer join
-- String-column `UPDATE` (multi-token value parsing)
-- DDL inside transactions
-- Continuous fuzz CI, soak test, reproducible-build attestation
+- Reproducible-build attestation
 - `SELECT AS OF <ts>` temporal queries (substrate ready, surface absent)
 - Predicate-filtered `SUB` (substrate ready, surface absent)
 - GPU HNSW index (substrate present; index lives on CPU today)
@@ -197,7 +202,7 @@ docker run --rm -p 7780:7780 \
 
 The container is distroless, runs as non-root (UID 65532), and persists
 WAL via a `/var/lib/cuttledb/wal` volume. Build locally with
-`docker build --build-arg VERSION=0.7.0 -t cuttledb .` — the build
+`docker build --build-arg VERSION=0.8.0 -t cuttledb .` — the build
 verifies the binary's sigstore signature against Rekor before assembling
 the image.
 

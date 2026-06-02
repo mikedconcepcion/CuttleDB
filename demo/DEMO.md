@@ -84,7 +84,7 @@
     ✓ O(1) cached aggregates + SIMD MIN/MAX
     ✓ Snapshot persistence (SAVE → one file you own)
 
-  Brain on disk: 35,181 bytes in one portable file. Engine binary: ~450 KB, zero deps.
+  Brain on disk: 35,181 bytes in one portable file. Engine binary: ~550 KB, zero deps.
 ```
 
 ## What to look at

@@ -313,8 +313,16 @@ export class CuttleDB {
     /** Build a secondary index on a string column. Returns the row count
      *  indexed. Subsequent inserts/deletes maintain it automatically.
      *  v0.5.0 limitation: string columns only. */
-    async index(hid, tid, col) {
-        return parseInt(await this.send(`INDEX ${hid} ${tid} ${col}`), 10);
+    /** Build a secondary index. One `col` → a classic per-column index
+     *  queried by {@link find}. Two or more columns → a *composite* index
+     *  over their canonical-joined values, queried by {@link findc} for O(1)
+     *  multi-column exact lookups (numeric and string columns may
+     *  participate). Returns the number of rows indexed. Idempotent —
+     *  rebuilding the same column list drops and recreates it. Maintained
+     *  automatically on insert/delete. */
+    async index(hid, tid, col, ...moreCols) {
+        const cols = [col, ...moreCols].join(" ");
+        return parseInt(await this.send(`INDEX ${hid} ${tid} ${cols}`), 10);
     }
 
     /** Return all row IDs where `col == value`. O(1) with an index, O(N)
@@ -323,6 +331,27 @@ export class CuttleDB {
         const body = await this.send(`FIND ${hid} ${tid} ${col} ${value}`);
         if (!body.startsWith("[") || !body.endsWith("]")) {
             throw new Error(`bad find result: ${body}`);
+        }
+        const inner = body.slice(1, -1);
+        if (!inner) return [];
+        return inner.split(";").map(s => parseInt(s, 10));
+    }
+
+    /** Composite point lookup: return all row IDs where every
+     *  `cols[i] === values[i]`. O(1) average when a composite index over the
+     *  same column list exists (build via `index(hid, tid, ...cols)`); O(N)
+     *  scan otherwise. Values are joined with the 0x1f unit separator so they
+     *  may contain spaces and commas; numeric values round-trip through the
+     *  same canonicalization as stored cells. */
+    async findc(hid, tid, cols, values) {
+        if (cols.length !== values.length) {
+            throw new Error("findc: cols and values length mismatch");
+        }
+        const colList = cols.map(c => parseInt(c, 10)).join(" ");
+        const valBlock = values.map(v => String(v)).join("\x1f");
+        const body = await this.send(`FINDC ${hid} ${tid} ${cols.length} ${colList} ${valBlock}`);
+        if (!body.startsWith("[") || !body.endsWith("]")) {
+            throw new Error(`bad findc result: ${body}`);
         }
         const inner = body.slice(1, -1);
         if (!inner) return [];
@@ -356,6 +385,31 @@ export class CuttleDB {
         );
     }
 
+    /** Set STRING column `col` to `newVal` on one row by physical rowId
+     *  (UPDRS, v0.8.0). Returns 1 on success, rejects if `col` is not a
+     *  STRING column. `newVal` is wire-escaped so embedded commas/newlines
+     *  round-trip. Secondary string / composite / BM25 indexes are kept
+     *  consistent and the change participates in transactions. */
+    async updateRowStr(hid, tid, rowId, col, newVal) {
+        return parseInt(
+            await this.send(`UPDRS ${hid} ${tid} ${rowId} ${col} ${encodeValue(newVal)}`),
+            10,
+        );
+    }
+
+    /** Set STRING column `setCol` to `setVal` for every row where
+     *  `predCol {op} threshold` (UPDATES, v0.8.0). Returns the number of
+     *  rows updated. `setCol` must be STRING, `predCol` numeric. Op:
+     *  Op.GT / Op.LT / Op.EQ. `setVal` is wire-escaped; index + transaction
+     *  semantics match updateRowStr. */
+    async updateWhereStr(hid, tid, setCol, setVal, predCol, op, threshold) {
+        return parseInt(
+            await this.send(
+                `UPDATES ${hid} ${tid} ${setCol} ${predCol} ${op} ${threshold} ${encodeValue(setVal)}`,
+            ), 10,
+        );
+    }
+
     /** Delete every row where `predCol {op} threshold`. Returns the number
      *  of rows deleted. Each deletion logs + broadcasts a DEL event. */
     async deleteWhere(hid, tid, predCol, op, threshold) {
@@ -379,12 +433,124 @@ export class CuttleDB {
         return parseRowlist(body);
     }
 
+    /** Aggregate by one or more grouping columns. Returns an array of
+     *  `{ key, value }`. `key` is scalar for a single grouping column and
+     *  an array of components when `by` adds more columns.
+     *
+     *  Options (all optional, generic CuttleDB API):
+     *    agg     — "count" | "sum" | "min" | "max" | "avg" (default "count")
+     *    aggCol  — numeric column to aggregate (required unless count)
+     *    by      — extra grouping columns: number | number[]
+     *    having  — [op, threshold] post-aggregation filter (op = Op.*)
+     *    order   — [field, dir]; field "key"|0 / "value"|1, dir "asc"|0 / "desc"|1
+     *    limit   — cap returned groups (after ordering) */
+    async groupBy(hid, tid, groupCol, opts = {}) {
+        const { agg = "count", aggCol = null, by = null,
+                having = null, order = null, limit = null } = opts;
+        const aggMap = { count: 0, sum: 1, min: 2, max: 3, avg: 4 };
+        if (!(agg in aggMap)) {
+            throw new Error(`unknown agg ${agg}; expected one of ${Object.keys(aggMap)}`);
+        }
+        const op = aggMap[agg];
+        let ac;
+        if (op === 0) {
+            ac = aggCol == null ? 0 : aggCol;
+        } else {
+            if (aggCol == null) throw new Error(`agg=${agg} requires aggCol`);
+            ac = aggCol;
+        }
+        let cmd = `GROUPBY ${hid} ${tid} ${groupCol} ${op} ${ac}`;
+        if (by != null) {
+            const cols = Array.isArray(by) ? by : [by];
+            if (cols.length) cmd += " BY " + cols.map(c => parseInt(c, 10)).join(" ");
+        }
+        if (having != null) {
+            const [hOp, hThr] = having;
+            cmd += ` HAVING ${parseInt(hOp, 10)} ${parseInt(hThr, 10)}`;
+        }
+        if (order != null) {
+            const [oField, oDir] = order;
+            const fMap = { key: 0, value: 1 }, dMap = { asc: 0, desc: 1 };
+            const of = typeof oField === "string" ? fMap[oField] : parseInt(oField, 10);
+            const od = typeof oDir === "string" ? dMap[oDir] : parseInt(oDir, 10);
+            cmd += ` ORDER ${of} ${od}`;
+        }
+        if (limit != null) cmd += ` LIMIT ${parseInt(limit, 10)}`;
+        return parseGroupBy(await this.send(cmd));
+    }
+
+    /** 2-way join. Returns an array of `[leftRow, rightRow]` pairs. Matches
+     *  rows where `left.lCol {op} right.rCol`. Both columns must be
+     *  STRING-or-STRING or both numeric; VEC is rejected.
+     *
+     *  Options (v0.8.0):
+     *    how — "inner" (default) | "left" | "right" | "full". Outer joins
+     *          pair an unmatched row with -1 (the NULL sentinel) on the
+     *          other side.
+     *    op  — join predicate (Op.*). Op.EQ (default) runs as a hash join
+     *          (O(N+M), no cap). Op.GT / Op.LT are non-equi nested-loop
+     *          joins (left>right / left<right; strings compare lexically)
+     *          and reject past ~100M comparisons with join_too_large. */
+    async join(lHid, lTid, lCol, rHid, rTid, rCol, opts = {}) {
+        const { how = "inner", op = Op.EQ } = opts;
+        const howMap = { inner: 0, left: 1, right: 2, full: 3 };
+        if (!(how in howMap)) {
+            throw new Error(`unknown how ${how}; expected one of ${Object.keys(howMap)}`);
+        }
+        let cmd = `JOIN ${lHid} ${lTid} ${lCol} ${rHid} ${rTid} ${rCol}`;
+        if (howMap[how] !== 0) cmd += ` TYPE ${howMap[how]}`;
+        if (op !== Op.EQ) cmd += ` OP ${parseInt(op, 10)}`;
+        const body = await this.send(cmd);
+        if (!body.startsWith("[") || !body.endsWith("]")) {
+            throw new Error(`bad join result: ${body}`);
+        }
+        const inner = body.slice(1, -1);
+        if (!inner) return [];
+        return inner.split(";").map(tok => {
+            const [l, r] = tok.split(",");
+            return [parseInt(l, 10), parseInt(r, 10)];
+        });
+    }
+
     // ── Vector search ────────────────────────────────────────────
 
-    async knn(hid, tid, col, k, query) {
+    /** Top-`k` nearest rows by cosine similarity → `[{rowId, score}]` sorted
+     *  desc. Pass `{ where }` to apply a Phase-1 filter clause
+     *  ("col OP value [AND col OP value ...]"; string values quoted as
+     *  `4="playbook"`, numeric bare as `5>3`, up to 8 AND'd predicates). */
+    async knn(hid, tid, col, k, query, { where = null } = {}) {
         const q = query.join("|");
-        const body = await this.send(`KNN ${hid} ${tid} ${col} ${k} ${q}`);
-        return parseKnn(body);
+        let cmd = `KNN ${hid} ${tid} ${col} ${k} ${q}`;
+        if (where) cmd += ` WHERE ${where}`;
+        return parseKnn(await this.send(cmd));
+    }
+
+    /** Top-`k` lexical matches via BM25 over a STRING column →
+     *  `[{rowId, score}]` sorted desc. The inverted index auto-builds on
+     *  first use; `send("INDEX <hid> <tid> <col> BM25")` forces a rebuild. */
+    async lsearch(hid, tid, col, k, query) {
+        return parseKnn(await this.send(`LSEARCH ${hid} ${tid} ${col} ${k} ${query}`));
+    }
+
+    /** Boolean-DSL retrieval → `[{rowId, score}]` sorted desc. `expr`
+     *  combines filters (AND/OR/parens, `= != < <= > >=`) with optional
+     *  scoring atoms: `col~V[v1|v2|...]` (vector over a VEC column) and
+     *  `col~"phrase"` (BM25 over a STRING column). Scoring atoms feed a
+     *  per-row RRF rank; with none, results order by rowId asc, capped at
+     *  `k`. */
+    async bsearch(hid, tid, k, expr) {
+        return parseKnn(await this.send(`BSEARCH ${hid} ${tid} ${k} ${expr}`));
+    }
+
+    /** Hybrid retrieval — fuses KNN and BM25 via Reciprocal Rank Fusion →
+     *  `[{rowId, score}]` sorted desc. The score is an RRF rank metric
+     *  (comparable across queries by order, not magnitude). Pass `{ where }`
+     *  to filter both streams (same syntax as {@link knn}). */
+    async search(hid, tid, vecCol, textCol, k, vec, query, { where = null } = {}) {
+        const v = vec.join("|");
+        let cmd = `SEARCH ${hid} ${tid} ${vecCol} ${textCol} ${k} ${v} ||| ${query}`;
+        if (where) cmd += ` WHERE ${where}`;
+        return parseKnn(await this.send(cmd));
     }
 
     // ── Persistence ──────────────────────────────────────────────
@@ -512,6 +678,51 @@ function parseLog(body) {
         return { tsMs: parseInt(ts, 10), rowId: parseInt(rid, 10), op };
     });
     return { cursor, events };
+}
+
+/** Parse one GROUPBY key component at index `i`. Returns
+ *  `[value, nextIndex, terminator]` where terminator is "|" (more key
+ *  components), ":" (key done, value follows) or "" (end). Quoted →
+ *  string; bare → Number when finite, else the raw string. */
+function parseGbComponent(s, i) {
+    if (s[i] === '"') {
+        const end = s.indexOf('"', i + 1);
+        if (end < 0) return [s.slice(i + 1), s.length, ""];
+        const nxt = end + 1;
+        return [s.slice(i + 1, end), nxt + 1, nxt < s.length ? s[nxt] : ""];
+    }
+    let j = i;
+    while (j < s.length && s[j] !== "|" && s[j] !== ":") j++;
+    const raw = s.slice(i, j);
+    const num = Number(raw);
+    const val = raw !== "" && Number.isFinite(num) ? num : raw;
+    return [val, j + 1, j < s.length ? s[j] : ""];
+}
+
+/** Parse a GROUPBY result body "[key:value;...]" into an array of
+ *  `{ key, value }`. Single-column keys are scalar; multi-column keys
+ *  (joined with "|" on the wire) become arrays of components. */
+function parseGroupBy(body) {
+    if (!body.startsWith("[") || !body.endsWith("]")) {
+        throw new Error(`bad groupby result: ${body}`);
+    }
+    const inner = body.slice(1, -1);
+    if (!inner) return [];
+    const out = [];
+    for (const entry of inner.split(";")) {
+        if (!entry) continue;
+        const comps = [];
+        let i = 0, value = "";
+        while (i < entry.length) {
+            const [comp, next, term] = parseGbComponent(entry, i);
+            comps.push(comp);
+            i = next;
+            if (term === ":") { value = entry.slice(i); break; }
+        }
+        if (!comps.length) continue;
+        out.push({ key: comps.length === 1 ? comps[0] : comps, value: Number(value) });
+    }
+    return out;
 }
 
 /** Predicate comparison operators for fcountGt / selectGt / updateWhere /
