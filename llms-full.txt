@@ -116,11 +116,14 @@ await db.sub(hid, tid);
 The same engine compiles to WebAssembly and runs entirely in-process — no
 server, no socket — in Node and the browser. A `WasmTransport` is injected
 into the standard SDK, so every verb works unchanged; only the transport
-differs. The kit (~350 KB engine + a thin embed layer) lives in
-https://github.com/mikedconcepcion/CuttleDB/tree/main/wasm.
+differs. Install with `npm i cuttledb` (>= 0.8.1) and import the `/wasm`
+subpath. Not using npm? The same kit (~350 KB engine + a thin embed layer) is
+vendored at https://github.com/mikedconcepcion/CuttleDB/tree/main/wasm —
+import it by relative path (`./wasm/cuttledb.mjs`), keeping the `wasm/` folder
+next to `adapters/cuttledb.js`.
 
 ```javascript
-import { connect } from "cuttledb/wasm";   // or "./wasm/cuttledb.mjs"
+import { connect } from "cuttledb/wasm";   // npm i cuttledb (>= 0.8.1)
 
 const db  = await connect();                              // boots in-process
 const hid = await db.open();

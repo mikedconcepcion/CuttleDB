@@ -561,9 +561,11 @@ await db.insert("notes", [[1, "hello world", new Array(128).fill(0.1)]]);
 const rows = await db.knn("notes", "vec", { query: new Array(128).fill(0.1), k: 5 });
 console.log(rows);</code></pre>
 
-<p>Or run the engine in-process — no server — via WebAssembly:</p>
+<p>Or run the engine in-process — no server — via WebAssembly
+(<code>npm i cuttledb</code>, then import the <code>/wasm</code> subpath; not
+using npm? the same kit is vendored in the repo's <code>wasm/</code> folder):</p>
 
-<pre><code>import { connect } from "cuttledb/wasm";   // or "./wasm/cuttledb.mjs"
+<pre><code>import { connect } from "cuttledb/wasm";   // npm i cuttledb (>= 0.8.1)
 
 const db  = await connect();                              // boots in-process
 const hid = await db.open();
