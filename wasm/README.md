@@ -6,6 +6,46 @@ JavaScript SDK you'd use over TCP, just with an in-process transport.
 
 Works in **Node and the browser** from the same files.
 
+## Do I need to know WebAssembly? No.
+
+You never touch WebAssembly directly. The `.wasm` file is just the database
+engine in a portable form; the `.mjs` files are plain JavaScript that load it
+for you. You `import` one function (`connect`) and call normal methods
+(`open`, `create`, `insert`, `lsearch`, …). If you can call a JavaScript
+function, you can use this. Nothing to compile, nothing to install.
+
+## Installed from npm? Skip the copying
+
+If you `npm i cuttledb` (>= 0.8.1) the kit ships inside the package — just:
+
+```js
+import { connect } from "cuttledb/wasm";
+```
+
+The rest of this page is for the other case: **vendoring the files straight
+from this repo** (no npm), or serving them as static files in the browser.
+
+## What you need (read this first)
+
+The full-database kit is **four files that must stay together**:
+
+```
+your-project/
+├── wasm/
+│   ├── cuttledb-engine.wasm     ← the engine (~350 KB)
+│   ├── cuttledb-engine.js       ← loader glue
+│   └── cuttledb.mjs             ← the part you import
+└── adapters/
+    └── cuttledb.js              ← the SDK (cuttledb.mjs imports this)
+```
+
+`wasm/cuttledb.mjs` does `import { CuttleDB } from "../adapters/cuttledb.js"`,
+so **copy both the `wasm/` folder and `adapters/cuttledb.js`** out of this repo,
+keeping them side by side. If you copy only `wasm/`, the import breaks.
+
+> Just want search and nothing else? The **CuttleSearch** kit is a single
+> self-contained file (no `adapters/` needed) — see the CuttleSearch repo.
+
 ## Files
 
 | File | What it is |
@@ -16,6 +56,8 @@ Works in **Node and the browser** from the same files.
 | `demo.mjs` | Node demo: build a table, index it, search it — all in-process. |
 
 ## Quick start (Node)
+
+From inside this folder, just run the demo — no setup:
 
 ```bash
 node demo.mjs                       # build a tiny table and BM25-search it
@@ -30,16 +72,10 @@ query:  "fox river"
   3. row 4  score 0.8288  the river flows fast under the old stone bridge
 ```
 
-## API
-
-`connect()` boots the engine in-process and returns an ordinary CuttleDB SDK
-instance — **every verb the TCP/WebSocket client exposes works unchanged**
-(`open`, `create`, `insert`, `find`, `findc`, `index`, `lsearch`, `bsearch`,
-`search`, transactions, …). See [`../adapters/cuttledb.js`](../adapters/cuttledb.js)
-for the full method surface.
+## Your own code
 
 ```js
-import { connect } from "./cuttledb.mjs";
+import { connect } from "./cuttledb.mjs";                  // relative path to the file
 
 const db  = await connect();                               // boot in-process
 const hid = await db.open();
@@ -49,6 +85,16 @@ const hits = await db.lsearch(hid, tid, 0, 5, "fox");      // [{ rowId, score }]
 await db.closeHandle(hid);
 db.close();
 ```
+
+The import is a **relative path to the `cuttledb.mjs` file** (`./cuttledb.mjs`,
+`../wasm/cuttledb.mjs`, etc. — wherever you put it). It is not an npm package
+name; you point at the file you copied.
+
+`connect()` boots the engine in-process and returns an ordinary CuttleDB SDK
+instance — **every verb the TCP/WebSocket client exposes works unchanged**
+(`open`, `create`, `insert`, `find`, `findc`, `index`, `lsearch`, `bsearch`,
+`search`, transactions, …). See [`../adapters/cuttledb.js`](../adapters/cuttledb.js)
+for the full method surface.
 
 Load a pre-built snapshot instead of building from scratch:
 
@@ -62,8 +108,8 @@ const hits = await db.lsearch(hid, 0, 0, 5, "fox river");
 
 ## In the browser
 
-Serve this folder over HTTP so `cuttledb-engine.wasm` is fetchable next to the
-loader, then:
+There is no build step. **Serve this folder over HTTP** (browsers won't fetch
+`.wasm` from `file://`) so `cuttledb-engine.wasm` sits next to the loader, then:
 
 ```html
 <script type="module">
@@ -75,6 +121,9 @@ loader, then:
   console.log(await db.lsearch(hid, tid, 0, 5, "river"));
 </script>
 ```
+
+Any static file server works, e.g. `npx serve .` or `python -m http.server`,
+then open the page it prints.
 
 ## How it works
 

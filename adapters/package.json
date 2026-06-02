@@ -1,6 +1,6 @@
 {
   "name": "cuttledb",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "CuttleDB JS/TS client — embedded realtime database with vector search, WAL durability, and event streaming. Works in Node (TCP) and the browser (in-process WASM).",
   "type": "module",
   "main": "./cuttledb.js",
@@ -25,6 +25,10 @@
     "./search": {
       "types": "./search.d.ts",
       "default": "./search.js"
+    },
+    "./wasm": {
+      "types": "./wasm/cuttledb.d.ts",
+      "default": "./wasm/cuttledb.mjs"
     }
   },
   "files": [
@@ -34,6 +38,10 @@
     "cluster.d.ts",
     "search.js",
     "search.d.ts",
+    "wasm/cuttledb.mjs",
+    "wasm/cuttledb.d.ts",
+    "wasm/cuttledb-engine.js",
+    "wasm/cuttledb-engine.wasm",
     "README.md"
   ],
   "keywords": [

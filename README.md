@@ -299,11 +299,12 @@ real-time push.
 ## Quickstart — Embeddable (WASM, in-process)
 
 No server, no socket, no install: the engine is compiled to WebAssembly
-and runs **inside your Node or browser process**. The same SDK works
-unchanged — only the transport differs.
+and runs **inside your Node or browser process**. You don't need to know
+anything about WebAssembly — you `import` one function and call the same
+SDK methods as always; only the transport differs.
 
 ```js
-import { connect } from "cuttledb/wasm";   // or "./wasm/cuttledb.mjs"
+import { connect } from "cuttledb/wasm";   // npm i cuttledb  (>= 0.8.1)
 
 const db  = await connect();                              // boots in-process
 const hid = await db.open();
@@ -316,8 +317,14 @@ const hits = await db.lsearch(hid, tid, 0, 5, "fox");     // [{ rowId, score }]
 Every verb the TCP/WebSocket client exposes (`create`, `insert`, `find`,
 `index`, `lsearch`, `search`, transactions, …) works in-process. Load a
 pre-built snapshot with `await db.loadSnapshot(bytes)` instead of building
-from scratch. The kit (`~350 KB` engine + a thin embed layer) lives in
-[**wasm/**](wasm/) — see [wasm/README.md](wasm/README.md).
+from scratch.
+
+**Not using npm?** The same kit (`~350 KB` engine + a thin embed layer) is
+vendored at [**wasm/**](wasm/) — import it by relative path instead
+(`import { connect } from "./wasm/cuttledb.mjs"`), keeping the `wasm/` folder
+next to `adapters/cuttledb.js` (the embed layer imports the SDK from there).
+Step-by-step setup, the browser recipe, and a runnable `node demo.mjs` are in
+[wasm/README.md](wasm/README.md).
 
 ---
 
