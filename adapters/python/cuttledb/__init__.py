@@ -34,7 +34,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 __all__ = [
     "CuttleDB",
     "CuttleDBError",
@@ -42,9 +42,21 @@ __all__ = [
     "Op",
     "Column",
     "Event",
+    "FieldCipher",
     "datetime_to_epoch_ms",
     "epoch_ms_to_datetime",
 ]
+
+
+def __getattr__(name: str):
+    # PEP 562 lazy import: keep the base package zero-dependency. FieldCipher
+    # lives in cuttledb.crypto, which needs the optional `cuttledb[crypto]`
+    # extra; importing it here only when actually referenced means a plain
+    # `import cuttledb` never pulls in `cryptography`.
+    if name == "FieldCipher":
+        from .crypto import FieldCipher
+        return FieldCipher
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 class CuttleDBError(RuntimeError):
@@ -617,6 +629,33 @@ class CuttleDB:
         ]
         return [int(r) for r in self.send_batch(cmds)]
 
+    @staticmethod
+    def _enc_row(values: Sequence[object], cipher, enc_cols) -> List[object]:
+        """Return a copy of ``values`` with the cells at ``enc_cols`` replaced
+        by their ``enc:v1:`` ciphertext tokens. Server-bound only — these are
+        ordinary STRING values once encrypted."""
+        cols = set(enc_cols)
+        return [cipher.encrypt(v) if i in cols else v
+                for i, v in enumerate(values)]
+
+    def insert_enc(self, hid: int, tid: int, values: Sequence[object],
+                   cipher: "FieldCipher", enc_cols: Iterable[int]) -> int:
+        """Like :meth:`insert`, but client-side-encrypts the cells whose column
+        indices are in ``enc_cols`` before they leave the process. Those
+        columns must be STRING. The server stores only ciphertext; read the
+        row back with :meth:`get_dec` (same ``cipher`` + ``enc_cols``)."""
+        return self.insert(hid, tid, self._enc_row(values, cipher, enc_cols))
+
+    def insert_batch_enc(self, hid: int, tid: int,
+                         rows: Iterable[Sequence[object]],
+                         cipher: "FieldCipher",
+                         enc_cols: Iterable[int]) -> List[int]:
+        """Encrypted-column variant of :meth:`insert_batch`."""
+        cols = list(enc_cols)
+        return self.insert_batch(
+            hid, tid, (self._enc_row(r, cipher, cols) for r in rows)
+        )
+
     def delete(self, hid: int, tid: int, row_id: int) -> bool:
         """Delete a row by id. Returns True if a row was removed."""
         return int(self.send(f"DELETE {hid} {tid} {row_id}")) == 1
@@ -737,6 +776,16 @@ class CuttleDB:
         STR values are wire-escape-decoded (``\\,`` → ``,``, ``\\r`` → CR, etc.)
         so the original Python string round-trips even with embedded commas."""
         return _split_wire_row(self.send(f"GET {hid} {tid} {row_id}"))
+
+    def get_dec(self, hid: int, tid: int, row_id: int,
+                cipher: "FieldCipher", enc_cols: Iterable[int]) -> List[str]:
+        """Like :meth:`get`, but decrypts the cells at ``enc_cols`` with
+        ``cipher``. Cells that are not ``enc:v1:`` tokens pass through
+        unchanged, so rows written before encryption was enabled still read."""
+        row = _split_wire_row(self.send(f"GET {hid} {tid} {row_id}"))
+        cols = set(enc_cols)
+        return [cipher.decrypt(v) if i in cols else v
+                for i, v in enumerate(row)]
 
     def count(self, hid: int, tid: int) -> int:
         return int(self.send(f"COUNT {hid} {tid}"))

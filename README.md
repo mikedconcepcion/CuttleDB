@@ -35,7 +35,7 @@ $ cuttledb-server --port 7780 \
 
 Copy the binary, run it. No external runtime to install.
 
-## Current Status (v0.8)
+## Current Status (v0.9)
 
 CuttleDB is **production-orientation, surface still expanding**. The
 substrate is real and tested; the relational + retrieval surface is
@@ -67,7 +67,12 @@ arrive.
   (NDJSON per UTC day), rate limit, idle timeout, slow-query log
   (NDJSON, day-rotated), `--max-conn` DoS cap, HTTP `/health` probe,
   Prometheus `/metrics` endpoint
-- TLS (RSA cert + server-side, `CUTTLEDB_WITH_TLS=1` build flag)
+- TLS (`CUTTLEDB_WITH_TLS=1` build flag): RSA **and** EC keys, mutual
+  TLS (`--tls-client-ca`), cipher allow-list (`--tls-ciphers`), and
+  certificate hot-reload (no restart)
+- Client-side encrypted columns (adapter-side AES-256-GCM; the server
+  stores ciphertext only) — Python `cuttledb[crypto]` extra + JS
+  `node:crypto`
 - Multi-platform CI: Linux + macOS + Windows × Python 3.10/3.12
 
 **Experimental** (works, but contract may evolve):
@@ -81,7 +86,6 @@ arrive.
 
 - Graph types + traversal (`MATCH` verb)
 - Native CRDT / distributed sync
-- Mutual TLS (mTLS), EC private keys, cipher allow-list, cert hot-reload
 - Reproducible-build attestation
 - `SELECT AS OF <ts>` temporal queries (substrate ready, surface absent)
 - Predicate-filtered `SUB` (substrate ready, surface absent)
@@ -202,7 +206,7 @@ docker run --rm -p 7780:7780 \
 
 The container is distroless, runs as non-root (UID 65532), and persists
 WAL via a `/var/lib/cuttledb/wal` volume. Build locally with
-`docker build --build-arg VERSION=0.8.0 -t cuttledb .` — the build
+`docker build --build-arg VERSION=0.9.0 -t cuttledb .` — the build
 verifies the binary's sigstore signature against Rekor before assembling
 the image.
 

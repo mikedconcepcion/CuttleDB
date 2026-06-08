@@ -76,7 +76,7 @@ working CRUD + KNN + SUB session in under 60 seconds.
 - [x] **Continuous fuzz CI** — libFuzzer harness for the WAL replay
       parser; scheduled daily + manual.
 
-## Shipped — v0.8 (current)
+## Shipped — v0.8
 
 **Theme: relational completion + retrieval parity.**
 
@@ -102,14 +102,23 @@ working CRUD + KNN + SUB session in under 60 seconds.
       JS, `cuttledb.search` Python) for the separate read-only BM25
       HTTP service.
 
-## Next
+## Shipped — v0.9 (current)
 
 **Theme: security depth + at-rest privacy.**
 
-- [ ] **mTLS, cipher allow-lists, EC keys, cert hot-reload, OCSP
-      stapling**.
-- [ ] **Client-side encrypted columns** — encrypt before INSERT,
-      decrypt after GET; no server-side crypto.
+- [x] **TLS hardening** (opt-in `CUTTLEDB_WITH_TLS=1` build) —
+      EC (P-256 / P-384) keys; cipher allow-list (`--tls-ciphers`);
+      mutual TLS (`--tls-client-ca`: client cert mandatory + verified
+      against the CA bundle); certificate hot-reload (mtime-polled, no
+      restart). **No OCSP / CRL** — revocation is handled by short-lived
+      certs rotated via hot-reload and narrowed by mTLS.
+- [x] **Client-side encrypted columns** — adapter-side AES-256-GCM:
+      encrypt before INSERT, decrypt after GET; the server stores
+      ciphertext only, no server-side crypto and no new wire verb.
+      Python (`FieldCipher` + `insert_enc` / `get_dec`, optional
+      `cuttledb[crypto]` extra) and JS (`FieldCipher` + `insertEnc` /
+      `getDec`, `node:crypto`). Language-neutral `enc:v1:` token —
+      cross-language decrypt verified.
 
 ## Then — v1.0
 

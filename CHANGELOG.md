@@ -5,6 +5,61 @@ All notable changes to CuttleDB are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] — 2026-06-06
+
+**Theme: security depth + at-rest privacy.** TLS gains the hardening an
+internal-network deployment needs, and string columns can be encrypted
+client-side so the server only ever stores ciphertext.
+
+### Added
+
+- **TLS hardening** (opt-in `CUTTLEDB_WITH_TLS=1` build; the default
+  binary stays zero-dependency and TLS-less). All four land behind the
+  existing `--tls-cert` / `--tls-key` flags:
+  - **EC private keys.** The PEM loader now accepts P-256 / P-384 EC
+    keys in addition to RSA, so deployments can use smaller, faster
+    elliptic-curve certificates.
+  - **Cipher allow-list** — `--tls-ciphers <csv>`. Restrict the
+    negotiated suites to an explicit list (OpenSSL-style names, e.g.
+    `ECDHE-RSA-AES256-GCM-SHA384,ECDHE-ECDSA-CHACHA20-POLY1305`).
+    Unknown names fail fast at startup.
+  - **Mutual TLS** — `--tls-client-ca <bundle.pem>`. When set, a client
+    certificate becomes **mandatory** and is verified against the CA
+    bundle; the handshake is rejected for a missing or untrusted client
+    cert.
+  - **Certificate hot-reload.** The cert/key files are re-read when
+    their mtime advances (polled once per accept), so operators can
+    rotate certificates without restarting the server or dropping live
+    connections.
+  - **Revocation model.** There is deliberately **no OCSP / CRL**.
+    Revocation is handled by short-lived certificates rotated via
+    hot-reload, narrowed by mTLS — a smaller, auditable surface that
+    suits the small-binary ethos.
+- **Client-side encrypted columns** (adapter-side; no server-side
+  crypto and no new wire verbs). Encrypt selected STRING cells before
+  they leave the process and decrypt them after read-back, so the
+  database stores only opaque ciphertext:
+  - **Python** — `cuttledb.crypto.FieldCipher` plus `insert_enc`,
+    `insert_batch_enc`, and `get_dec`. Gated behind the optional
+    `cuttledb[crypto]` extra (the `cryptography` package); the base
+    install stays zero-dependency.
+  - **JavaScript / TypeScript** — `FieldCipher` plus `insertEnc`,
+    `insertBatchEnc`, and `getDec`, built on `node:crypto` (lazy-loaded
+    so the browser bundle is unaffected).
+  - **Format** — AES-256-GCM with a fresh 12-byte nonce and 16-byte
+    auth tag, serialized as `enc:v1:<base64(nonce || ciphertext ||
+    tag)>`. The token layout is identical across the Python and JS
+    adapters, so a value encrypted in one language decrypts in the
+    other. A wrong key fails the GCM tag check; non-token cells pass
+    through unchanged, so mixed plaintext/ciphertext columns read fine.
+
+### Notes
+
+- Base adapter installs remain zero-dependency: field encryption is an
+  opt-in Python extra and a lazy `node:crypto` import in JS.
+- Key management is the caller's responsibility — losing the key means
+  losing the data. CuttleDB never sees the key or the plaintext.
+
 ## [0.8.0] — 2026-06-02
 
 ### Added

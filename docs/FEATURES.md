@@ -365,11 +365,47 @@ AUTH s3cret  → +OK authenticated
 
 ### TLS
 
-CuttleDB does not link a TLS implementation — it would break the
-zero-dependency invariant. For production, terminate TLS at
+The **default binary links no TLS implementation** — that would break
+the zero-dependency invariant. For that build, terminate TLS at
 `stunnel` / `nginx` / a cloud load balancer and run CuttleDB on
-`127.0.0.1`. The wire protocol passes through any TLS terminator
+`127.0.0.1`; the wire protocol passes through any TLS terminator
 unchanged.
+
+For deployments that want TLS in-process, an **opt-in build**
+(`CUTTLEDB_WITH_TLS=1`) links a vendored, audited TLS 1.2 stack — still
+no system package dependency. It is configured entirely by flags:
+
+| Flag | Effect |
+|---|---|
+| `--tls-cert <pem>` / `--tls-key <pem>` | Enable TLS with this server certificate + key. RSA **and** EC (P-256 / P-384) keys are accepted. |
+| `--tls-ciphers <csv>` | Restrict negotiated suites to an explicit allow-list (OpenSSL-style names, e.g. `ECDHE-RSA-AES256-GCM-SHA384`). Unknown names fail fast at startup. |
+| `--tls-client-ca <bundle.pem>` | **Mutual TLS** — require and verify a client certificate against this CA bundle. Missing or untrusted client certs are rejected at the handshake. |
+
+Certificates **hot-reload**: rotating the cert/key files on disk is
+picked up on the next connection (mtime-polled in the accept loop), so
+you can roll certificates without a restart or dropping live
+connections. There is deliberately **no OCSP / CRL** — revocation is
+handled by short-lived certificates rotated via hot-reload and narrowed
+by mTLS, which keeps the surface small and auditable.
+
+### Client-side encrypted columns
+
+Selected STRING cells can be encrypted **in the adapter** before they
+reach the wire and decrypted after read-back, so the server stores only
+opaque ciphertext — at-rest privacy that does not depend on disk
+encryption or trusting the server host. There is no server-side crypto
+and no new wire verb; an encrypted cell is an ordinary STRING value.
+
+- **Python** — `FieldCipher` + `insert_enc` / `insert_batch_enc` /
+  `get_dec`, gated behind the optional `cuttledb[crypto]` extra. The
+  base install stays zero-dependency.
+- **JS / TS** — `FieldCipher` + `insertEnc` / `insertBatchEnc` /
+  `getDec`, built on `node:crypto`.
+
+Values use AES-256-GCM (fresh 12-byte nonce, 16-byte tag) in a
+language-neutral `enc:v1:<base64(nonce‖ciphertext‖tag)>` token, so a
+value encrypted by one adapter decrypts in the other. Key management is
+the caller's responsibility; CuttleDB never sees the key or plaintext.
 
 ## Networking
 
@@ -493,15 +529,15 @@ selects, evictions). With `hid tid`: per-table counters.
 
 ## What's not yet here (and what plans to)
 
-As of v0.8.0 the write path, durability, transactions (incl. DDL),
-secondary + composite indexes, HNSW ANN, BM25, joins, and the full
-hardening tier (AUTH, TLS, audit, rate limit, `/health`, `/metrics`)
-have all shipped. What remains:
+As of v0.9.0 the write path, durability, transactions (incl. DDL),
+secondary + composite indexes, HNSW ANN, BM25, joins, the full
+hardening tier (AUTH, TLS, audit, rate limit, `/health`, `/metrics`),
+TLS hardening (mTLS, EC keys, cipher allow-list, cert hot-reload), and
+client-side encrypted columns have all shipped. What remains:
 
 | Feature | Status | Planned |
 |---|---|---|
-| Mutual TLS (mTLS), EC keys, cipher allow-list, cert hot-reload | RSA + server-side TLS only | Next |
-| Client-side encrypted columns | absent | Next |
+| OCSP / CRL revocation | not planned — short-lived certs + hot-reload + mTLS instead | — |
 | Graph types + traversal (`MATCH`) | absent | v1.0 |
 | Native CRDT / distributed sync | compose via `LOG`/`SUB` (`Cluster` adapter) | v1.0 |
 | `SELECT AS OF <ts>` temporal queries | substrate ready, surface absent | v1.0 |

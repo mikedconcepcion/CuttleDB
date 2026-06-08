@@ -17,6 +17,12 @@
 
 const DEFAULT_RECV_CAP = 65536;
 
+// Client-side field encryption (v0.9.0). Prefix marks an AES-256-GCM
+// ciphertext token; format is identical to the Python adapter so a value
+// encrypted in one language decrypts in the other:
+//   enc:v1:<base64( iv[12] || ciphertext || tag[16] )>
+const ENC_PREFIX = "enc:v1:";
+
 // ── Transport: TCP (Node) ─────────────────────────────────────────────
 
 class TcpTransport {
@@ -370,6 +376,19 @@ export class CuttleDB {
         return (await this.sendBatch(cmds)).map(s => parseInt(s, 10));
     }
 
+    /** Like `insert`, but client-side-encrypts the cells whose column indices
+     *  are in `encCols` (a FieldCipher must be supplied). Those columns must
+     *  be STRING; the server stores only ciphertext. Read back with `getDec`
+     *  using the same cipher + encCols. */
+    async insertEnc(hid, tid, values, cipher, encCols) {
+        return this.insert(hid, tid, encRow(values, cipher, encCols));
+    }
+
+    /** Encrypted-column variant of `insertBatch`. */
+    async insertBatchEnc(hid, tid, rows, cipher, encCols) {
+        return this.insertBatch(hid, tid, rows.map(r => encRow(r, cipher, encCols)));
+    }
+
     async delete(hid, tid, rowId) {
         return parseInt(await this.send(`DELETE ${hid} ${tid} ${rowId}`), 10) === 1;
     }
@@ -422,6 +441,14 @@ export class CuttleDB {
     // ── DML — read ───────────────────────────────────────────────
 
     async get(hid, tid, rowId)         { return splitWireRow(await this.send(`GET ${hid} ${tid} ${rowId}`)); }
+    /** Like `get`, but decrypts the cells at `encCols` with `cipher`. Cells
+     *  that are not `enc:v1:` tokens pass through unchanged, so rows written
+     *  before encryption was enabled still read. */
+    async getDec(hid, tid, rowId, cipher, encCols) {
+        const row = splitWireRow(await this.send(`GET ${hid} ${tid} ${rowId}`));
+        const cols = new Set(encCols);
+        return row.map((v, i) => cols.has(i) ? cipher.decrypt(v) : v);
+    }
     async count(hid, tid)              { return parseInt(await this.send(`COUNT ${hid} ${tid}`), 10); }
     async sum(hid, tid, col)           { return Number(await this.send(`SUM ${hid} ${tid} ${col}`)); }
     async min(hid, tid, col)           { return Number(await this.send(`MIN ${hid} ${tid} ${col}`)); }
@@ -572,6 +599,76 @@ export class CuttleDB {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
+
+// ── Field encryption (Node) ───────────────────────────────────────────
+
+let _nodeCrypto = null;
+async function loadNodeCrypto() {
+    // Lazy + dynamic so the browser bundle never statically pulls node:crypto
+    // (mirrors how TcpTransport lazy-imports node:net).
+    if (!_nodeCrypto) _nodeCrypto = await import("node:crypto");
+    return _nodeCrypto;
+}
+
+/** AES-256-GCM cipher for individual CuttleDB cell values. The server never
+ *  sees plaintext or the key — values are encrypted before the wire and
+ *  decrypted after, so the DB stores only ciphertext in a STRING column.
+ *
+ *  Construct via the async factory so node:crypto loads once:
+ *      const cipher = await FieldCipher.create(key);   // key: 32 bytes
+ *  then `encrypt` / `decrypt` are synchronous. */
+export class FieldCipher {
+    constructor(key, cryptoMod) {
+        if (!(key instanceof Uint8Array) && !Buffer.isBuffer(key))
+            throw new TypeError("key must be a Buffer/Uint8Array");
+        if (key.length !== 32)
+            throw new RangeError(`key must be 32 bytes for AES-256, got ${key.length}`);
+        this._key = Buffer.from(key);
+        this._c = cryptoMod;
+    }
+
+    /** Build a FieldCipher, loading node:crypto. `key` is 32 raw bytes. */
+    static async create(key) {
+        return new FieldCipher(key, await loadNodeCrypto());
+    }
+
+    /** Fresh random 32-byte AES-256 key (Buffer). */
+    static async generateKey() {
+        return (await loadNodeCrypto()).randomBytes(32);
+    }
+
+    /** Encrypt a string → `enc:v1:…` token (safe in a STRING cell / on wire). */
+    encrypt(plaintext) {
+        const iv = this._c.randomBytes(12);
+        const c = this._c.createCipheriv("aes-256-gcm", this._key, iv);
+        const ct = Buffer.concat([c.update(Buffer.from(String(plaintext), "utf8")), c.final()]);
+        const tag = c.getAuthTag();
+        return ENC_PREFIX + Buffer.concat([iv, ct, tag]).toString("base64");
+    }
+
+    /** Decrypt an `enc:v1:…` token → string. Non-tokens pass through. */
+    decrypt(token) {
+        if (!FieldCipher.isEncrypted(token)) return token;
+        const raw = Buffer.from(token.slice(ENC_PREFIX.length), "base64");
+        if (raw.length < 12 + 16) throw new Error("ciphertext token too short");
+        const iv  = raw.subarray(0, 12);
+        const tag = raw.subarray(raw.length - 16);
+        const ct  = raw.subarray(12, raw.length - 16);
+        const d = this._c.createDecipheriv("aes-256-gcm", this._key, iv);
+        d.setAuthTag(tag);
+        return Buffer.concat([d.update(ct), d.final()]).toString("utf8");
+    }
+
+    static isEncrypted(token) {
+        return typeof token === "string" && token.startsWith(ENC_PREFIX);
+    }
+}
+
+/** Return a copy of `values` with cells at `encCols` replaced by ciphertext. */
+function encRow(values, cipher, encCols) {
+    const cols = new Set(encCols);
+    return values.map((v, i) => cols.has(i) ? cipher.encrypt(v) : v);
+}
 
 function encodeValue(v) {
     if (Array.isArray(v)) return v.join("|");

@@ -1,5 +1,53 @@
 # Release Notes
 
+## v0.9.0 — 2026-06-06
+
+Security-depth + at-rest-privacy release. The opt-in TLS build grows from
+a single RSA-cert handshake into a hardened transport, and a new
+client-side encrypted-columns story lets you keep ciphertext in the
+server without the server ever seeing a key or a plaintext.
+
+### TLS hardening (opt-in `CUTTLEDB_WITH_TLS=1` build)
+
+The default build still links **no** TLS and stays zero-dependency; these
+land only when you compile with `CUTTLEDB_WITH_TLS=1`.
+
+- **EC private keys.** `--tls-key` now accepts EC (P-256 / P-384) keys in
+  addition to RSA — the PEM loader auto-detects the key type.
+- **Cipher allow-list.** `--tls-ciphers <csv>` restricts the negotiated
+  suites to an explicit OpenSSL-style list (e.g.
+  `ECDHE-RSA-AES256-GCM-SHA384`); an unknown name fails fast at startup.
+- **Mutual TLS.** `--tls-client-ca <bundle>` makes a client certificate
+  mandatory and verifies it against the supplied CA bundle — connections
+  without a trusted client cert are refused at the handshake.
+- **Certificate hot-reload.** The cert/key are re-read when their file
+  mtime changes, with no restart and no dropped connections — rotate
+  in place.
+- **No OCSP / CRL.** Revocation is handled by short-lived certificates
+  rotated through hot-reload and narrowed by mTLS, not by an online
+  revocation check.
+
+### Client-side encrypted columns
+
+- **Adapter-side AES-256-GCM.** Encrypt a field before `INSERT` and
+  decrypt it after `GET` — the server stores ciphertext only, does no
+  crypto, and gains no new wire verb. Python (`FieldCipher` +
+  `insert_enc` / `get_dec`, optional `cuttledb[crypto]` extra) and JS
+  (`FieldCipher` + `insertEnc` / `getDec`, built on `node:crypto`).
+- **Language-neutral token.** Encrypted cells carry an `enc:v1:` prefix;
+  the format is byte-identical across Python and JS, so a value written
+  by one adapter decrypts in the other. The base adapters stay
+  zero-dependency — only encrypted columns pull in the optional crypto
+  library on Python.
+
+### Compatibility
+
+- No wire-protocol change. Encrypted columns are ordinary STRING cells
+  on the wire; TLS hardening is transport-only.
+- The base Python and JS adapters remain zero-dependency; `cryptography`
+  is an opt-in extra (`pip install cuttledb[crypto]`).
+- Adapters published at `0.9.0` (npm `cuttledb`, PyPI `cuttledb`).
+
 ## v0.8.0 — 2026-06-02
 
 Relational + retrieval release. Four engine features that were on the

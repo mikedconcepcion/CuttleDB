@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cuttledb"
-version = "0.8.0"
+version = "0.9.0"
 description = "CuttleDB Python client — embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -35,6 +35,9 @@ dependencies = []
 
 [project.optional-dependencies]
 test = ["pytest>=7.0"]
+# Client-side field encryption (cuttledb.crypto.FieldCipher). The base
+# package stays zero-dependency; only encrypted columns need this.
+crypto = ["cryptography>=41.0"]
 
 [project.urls]
 Homepage   = "https://github.com/mikedconcepcion/CuttleDB"

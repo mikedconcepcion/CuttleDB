@@ -141,6 +141,13 @@ export class CuttleDB {
     // DML — write
     insert(hid: number, tid: number, values: (string | number | number[])[]): Promise<number>;
     insertBatch(hid: number, tid: number, rows: (string | number | number[])[][]): Promise<number[]>;
+    /** Like `insert`, but client-side-encrypts cells at `encCols` (must be STRING
+     *  columns) with `cipher`. The server stores only ciphertext. */
+    insertEnc(hid: number, tid: number, values: (string | number | number[])[],
+              cipher: FieldCipher, encCols: Iterable<number>): Promise<number>;
+    /** Encrypted-column variant of `insertBatch`. */
+    insertBatchEnc(hid: number, tid: number, rows: (string | number | number[])[][],
+                   cipher: FieldCipher, encCols: Iterable<number>): Promise<number[]>;
     delete(hid: number, tid: number, rowId: number): Promise<boolean>;
     /** Set setCol=setVal for rows matching predicate. Returns rows updated. */
     updateWhere(hid: number, tid: number, setCol: number, setVal: number,
@@ -159,6 +166,10 @@ export class CuttleDB {
 
     // DML — read
     get(hid: number, tid: number, rowId: number): Promise<Row>;
+    /** Like `get`, but decrypts cells at `encCols` with `cipher`. Non-ciphertext
+     *  cells pass through unchanged. */
+    getDec(hid: number, tid: number, rowId: number,
+           cipher: FieldCipher, encCols: Iterable<number>): Promise<Row>;
     count(hid: number, tid: number): Promise<number>;
     sum(hid: number, tid: number, col: number): Promise<number>;
     min(hid: number, tid: number, col: number): Promise<number>;
@@ -202,6 +213,24 @@ export const Op: {
     readonly LT: 1;
     readonly EQ: 2;
 };
+
+/** AES-256-GCM cipher for client-side encryption of individual cell values.
+ *  Build via the async factory (loads node:crypto once); encrypt/decrypt are
+ *  then synchronous. Token format `enc:v1:<base64(iv||ct||tag)>` matches the
+ *  Python adapter for cross-language round-trip. */
+export class FieldCipher {
+    constructor(key: Uint8Array, cryptoMod: any);
+    /** Build a FieldCipher from a 32-byte key (loads node:crypto). */
+    static create(key: Uint8Array): Promise<FieldCipher>;
+    /** Fresh random 32-byte AES-256 key. */
+    static generateKey(): Promise<Buffer>;
+    /** True if the value is an `enc:v1:` ciphertext token. */
+    static isEncrypted(token: unknown): boolean;
+    /** Encrypt a string → `enc:v1:…` token. */
+    encrypt(plaintext: string): string;
+    /** Decrypt an `enc:v1:…` token → string; non-tokens pass through. */
+    decrypt(token: string): string;
+}
 
 export class TcpTransport {
     constructor(opts: { host?: string; port?: number });
