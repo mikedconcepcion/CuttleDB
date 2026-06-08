@@ -2,7 +2,7 @@
 
 > Embedded realtime database with vector search, WAL durability, and event streaming. One self-contained binary, no external runtime dependencies. Apache-2.0.
 
-CuttleDB is an open-source database shipped as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB. It speaks a Redis-style line protocol over TCP or WebSocket — or runs entirely in-process via WebAssembly, no server. Latest release: v0.8.0 (2026-06-02).
+CuttleDB is an open-source database shipped as one self-contained binary per platform (Linux x64, macOS arm64, Windows x64), each under 1 MB. It speaks a Redis-style line protocol over TCP or WebSocket — or runs entirely in-process via WebAssembly, no server. Latest release: v0.9.0 (2026-06-08).
 
 ## What CuttleDB is
 
@@ -129,10 +129,11 @@ Numbers from bench/RESULTS.md and bench/HNSW_BENCH.md — every script reproduci
 
 ## Version history
 
+- **v0.9.0** (2026-06-08) — Security depth + at-rest privacy. Opt-in TLS hardening (EC P-256/P-384 keys, `--tls-ciphers` allow-list, mutual-TLS via `--tls-client-ca`, certificate hot-reload); client-side encrypted columns (AES-256-GCM performed in the adapter, `enc:v1:` tokens, server stores only ciphertext — Python optional `cuttledb[crypto]` extra, JS zero-dependency). Both additive — no breaking changes to the v0.7/v0.8 surface.
 - **v0.8.0** (2026-06-02) — Bulk feature release. Composite secondary indexes + `FINDC` multi-column point lookup; string-column `UPDATE` (`UPDRS`/`UPDATES`); multi-column `GROUPBY` with `HAVING`/`ORDER`/`LIMIT`; real relational `JOIN` (hash equi-join, non-equi nested-loop, left/right/full outer); DDL inside transactions; full JS adapter retrieval parity. Snapshot format bumped to v5 (older snapshots still load).
 - **v0.7.0** (2026-05-28) — Stability + correctness release. Three structural refactors (canonical per-column row emitter, safe wire-buffer append helper, wire-format escape contract test) eliminate the bug classes the v0.6.0 fixes addressed point-wise. Official Docker image at ghcr.io/mikedconcepcion/cuttledb-server (distroless, ~25 MB, non-root UID 65532).
 - **v0.6.0** (2026-05-28) — Initial public release. Cross-platform binaries, sigstore signing, Apache-2.0, PyPI + npm + GitHub Releases.
 
 ## Status
 
-Production-orientation, surface still expanding. Substrate (storage, retrieval, transactions, WAL, indexes) is tested and shipped. v1.0 ships when graph types, distributed CRDT sync, mTLS, and EC keys all land — see docs/ROADMAP.md for the path.
+Production-orientation, surface still expanding. Substrate (storage, retrieval, transactions, WAL, indexes) is tested and shipped. v1.0 ships when graph types and distributed CRDT sync land — see docs/ROADMAP.md for the path.
